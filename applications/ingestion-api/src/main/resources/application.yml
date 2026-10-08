@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: ingestion-api
+
+server:
+  port: ${SERVER_PORT:8080}
+  tomcat:
+    max-swallow-size: 64KB
+  max-http-request-header-size: 16KB
+
+ingestion:
+  inbox:
+    type: ${INGESTION_INBOX_TYPE:dynamodb}
+    table-name: ${INGESTION_INBOX_TABLE:DurableInbox}
+    retention: ${INGESTION_INBOX_RETENTION:P7D}
+  quota:
+    default-per-second: ${INGESTION_QUOTA_DEFAULT_PER_SECOND:100}
+    max-tenants: ${INGESTION_QUOTA_MAX_TENANTS:10000}
+    # cotas especificas: ingestion.quota.tenants.<tenant>=<req/s> (ex.: INGESTION_QUOTA_TENANTS_BANCO-A=500)
+  payload:
+    mode: ${INGESTION_PAYLOAD_MODE:local}
+    # Chave AES-256 em Base64 (32 bytes), obrigatoria no modo local; sem valor padrao.
+    local-key: ${INGESTION_PAYLOAD_LOCAL_KEY:}
+    kms-key-id: ${INGESTION_PAYLOAD_KMS_KEY_ID:}
+  jwt:
+    # JWKS do emissor (obrigatorio); emissor e audiencia recomendados.
+    jwk-set-uri: ${INGESTION_JWT_JWK_SET_URI:}
+    issuer: ${INGESTION_JWT_ISSUER:}
+    audience: ${INGESTION_JWT_AUDIENCE:}
+    tenant-claim: ${INGESTION_JWT_TENANT_CLAIM:tenant}
+  max-body-bytes: ${INGESTION_MAX_BODY_BYTES:16384}
+
+management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+springdoc:
+  # SECURITY-09, falha fechada: documentacao desligada por padrao. O ambiente local liga com
+  # INGESTION_API_DOCS_ENABLED=true (scripts/local-up.ps1); uma implantacao que esqueca a
+  # variavel nao expoe /v3/api-docs nem o Swagger UI.
+  api-docs:
+    enabled: ${INGESTION_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${INGESTION_API_DOCS_ENABLED:false}
+    path: /swagger-ui.html
+    try-it-out-enabled: true

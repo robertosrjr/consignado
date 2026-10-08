@@ -1,0 +1,37 @@
+# Regras de alerta da aplicação pedidos-api (métricas Micrometer / Spring Boot).
+# Alertas com label action="trigger_agentic_loop" são roteados pelo
+# Alertmanager para o orquestrador (Lambda). Os demais são descartados.
+
+groups:
+  - name: pedidos-api.self-healing
+    rules:
+      # process_cpu_usage vai de 0 a 1 (fração de CPU usada pela JVM).
+      - alert: HighCpuUsage_SelfHealingTrigger
+        expr: max by (application, instance) (process_cpu_usage{job=~"ingestion-api|worker|mock-legacy"}) > 0.85
+        for: 2m
+        labels:
+          severity: critical
+          action: trigger_agentic_loop
+          component: jvm
+        annotations:
+          summary: "CPU da JVM acima de 85% em {{ $labels.instance }}"
+          description: "A aplicação {{ $labels.application }} em {{ $labels.instance }} está com {{ $value | humanizePercentage }} de CPU há mais de 2 minutos. Possível ineficiência de código."
+
+      # Requer management.metrics.distribution.percentiles-histogram.http.server.requests=true
+      # na aplicação, para que o Micrometer exporte os buckets do histograma.
+      - alert: HighP99Latency_SelfHealingTrigger
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, application, uri) (
+              rate(http_server_requests_seconds_bucket{job=~"ingestion-api|worker|mock-legacy", uri!~"/actuator.*"}[2m])
+            )
+          ) > 2
+        for: 1m
+        labels:
+          severity: critical
+          action: trigger_agentic_loop
+          component: http_server
+        annotations:
+          summary: "Latência P99 acima de 2s no endpoint {{ $labels.uri }}"
+          description: "O endpoint {{ $labels.uri }} da aplicação {{ $labels.application }} está com P99 de {{ $value | humanizeDuration }}. Iniciar correlação com traces no Jaeger."
+          uri_afetada: "{{ $labels.uri }}"

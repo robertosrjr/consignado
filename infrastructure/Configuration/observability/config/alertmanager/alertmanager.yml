@@ -1,0 +1,42 @@
+# Alertmanager - roteamento de alertas
+# Montado em /etc/alertmanager (pasta inteira, read-only).
+# Reload sem restart: curl -X POST http://127.0.0.1:9093/-/reload
+
+global:
+  resolve_timeout: 5m
+
+route:
+  # Receiver padrão: descarta tudo que não casar com uma rota filha.
+  receiver: blackhole
+  group_by: [application, alertname, uri]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+
+  routes:
+    # Somente alertas marcados para self-healing acionam o orquestrador.
+    - receiver: langgraph-orchestrator
+      matchers:
+        - action = "trigger_agentic_loop"
+
+receivers:
+  # Orquestrador de IA (AWS Lambda Function URL).
+  - name: langgraph-orchestrator
+    webhook_configs:
+      - url: https://guogx4qqwlinbhlsqlwlfhq64q0jgpzc.lambda-url.sa-east-1.on.aws/
+        send_resolved: false
+        max_alerts: 10
+        # Para proteger a Function URL com AuthType=AWS_IAM, habilite SigV4
+        # (credenciais obtidas do Instance Profile via IMDSv2):
+        # http_config:
+        #   sigv4:
+        #     region: sa-east-1
+
+  # Sem integrações: alertas que chegam aqui são ignorados.
+  - name: blackhole
+
+# Não notifica alertas warning se já houver um critical para o mesmo alvo.
+inhibit_rules:
+  - source_matchers: [severity = "critical"]
+    target_matchers: [severity = "warning"]
+    equal: [application, alertname]

@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: mock-legacy
+
+server:
+  port: ${SERVER_PORT:8080}
+
+legacy:
+  # Obrigatoria (sem valor padrao): LEGACY_API_KEY
+  api-key: ${LEGACY_API_KEY:}
+  capacity-tps: ${LEGACY_CAPACITY_TPS:180}
+  max-ledger-entries: ${LEGACY_MAX_LEDGER_ENTRIES:1000000}
+  chaos:
+    latency-ms: ${LEGACY_CHAOS_LATENCY_MS:0}
+    error-rate: ${LEGACY_CHAOS_ERROR_RATE:0.0}
+
+springdoc:
+  # Falha fechada: desligada por padrao; o ambiente local liga com LEGACY_API_DOCS_ENABLED=true.
+  api-docs:
+    enabled: ${LEGACY_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${LEGACY_API_DOCS_ENABLED:false}
+    path: /swagger-ui.html

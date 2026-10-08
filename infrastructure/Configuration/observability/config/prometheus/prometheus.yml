@@ -1,0 +1,46 @@
+# Prometheus - configuração principal
+# Montado em /etc/prometheus (pasta inteira, read-only).
+# Reload sem restart: curl -X POST http://127.0.0.1:9090/-/reload
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: pedidos-monitor
+    region: sa-east-1
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+# Todo arquivo .yml em rules/ é carregado automaticamente.
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # Métricas enviadas pela aplicação ao Pushgateway.
+  # honor_labels preserva job/instance definidos no push (ex.: job="pedidos-api"),
+  # que são usados nas regras de alerta.
+  - job_name: pushgateway
+    honor_labels: true
+    static_configs:
+      - targets: ["pushgateway:9091"]
+
+  # Self-monitoring da stack
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+
+  - job_name: grafana
+    static_configs:
+      - targets: ["grafana:3000"]
+
+  - job_name: jaeger
+    static_configs:
+      - targets: ["jaeger:8888"]

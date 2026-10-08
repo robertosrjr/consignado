@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: worker
+
+server:
+  port: ${SERVER_PORT:8080}
+
+worker:
+  budget:
+    total-tps: ${WORKER_BUDGET_TOTAL_TPS:180}
+    # numero de instancias do Worker (o teto global e dividido entre elas; protecao local por instancia)
+    instances: ${WORKER_BUDGET_INSTANCES:1}
+    fast-share: ${WORKER_BUDGET_FAST_SHARE:0.70}
+    safety-margin: ${WORKER_BUDGET_SAFETY_MARGIN:0.98}
+    bucket-capacity: ${WORKER_BUDGET_BUCKET_CAPACITY:2}
+  legacy:
+    base-url: ${WORKER_LEGACY_BASE_URL:}
+    # obrigatoria, sem valor padrao
+    api-key: ${WORKER_LEGACY_API_KEY:}
+    request-timeout: ${WORKER_LEGACY_REQUEST_TIMEOUT:3s}
+    slow-call-threshold: ${WORKER_LEGACY_SLOW_CALL_THRESHOLD:2s}
+    failure-rate-percent: ${WORKER_LEGACY_FAILURE_RATE_PERCENT:10}
+    minimum-calls: ${WORKER_LEGACY_MINIMUM_CALLS:20}
+    window-size: ${WORKER_LEGACY_WINDOW_SIZE:100}
+    open-state-wait: ${WORKER_LEGACY_OPEN_STATE_WAIT:10s}
+  queue:
+    type: ${WORKER_QUEUE_TYPE:sqs}
+    fast-queue-url: ${WORKER_QUEUE_FAST_URL:}
+    standard-queue-url: ${WORKER_QUEUE_STANDARD_URL:}
+    prefetch: ${WORKER_QUEUE_PREFETCH:20}
+    wait-seconds: ${WORKER_QUEUE_WAIT_SECONDS:5}
+    visibility-timeout-seconds: ${WORKER_QUEUE_VISIBILITY_TIMEOUT_SECONDS:30}
+    retry-base-delay: ${WORKER_QUEUE_RETRY_BASE_DELAY:5s}
+    retry-max-delay: ${WORKER_QUEUE_RETRY_MAX_DELAY:60s}
+  inbox:
+    type: ${WORKER_INBOX_TYPE:dynamodb}
+    table-name: ${WORKER_INBOX_TABLE:DurableInbox}
+  payload:
+    mode: ${WORKER_PAYLOAD_MODE:local}
+    # Chave AES-256 em Base64 (a mesma da Ingestion API); obrigatoria no modo local; sem valor padrao.
+    local-key: ${WORKER_PAYLOAD_LOCAL_KEY:}
+    kms-key-id: ${WORKER_PAYLOAD_KMS_KEY_ID:}
+  max-in-flight: ${WORKER_MAX_IN_FLIGHT:64}
+  metrics-sample-period-seconds: ${WORKER_METRICS_SAMPLE_PERIOD_SECONDS:5}

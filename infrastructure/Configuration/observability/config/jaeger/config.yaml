@@ -1,0 +1,65 @@
+# Jaeger v2 (baseado no OpenTelemetry Collector) com storage no Elasticsearch.
+# Montado em /etc/jaeger (pasta inteira, read-only).
+# Alterações exigem: docker compose restart jaeger
+
+service:
+  extensions: [jaeger_storage, jaeger_query, healthcheckv2]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [jaeger_storage_exporter]
+  telemetry:
+    resource:
+      service.name: jaeger
+    logs:
+      level: info
+    # Métricas internas do Jaeger, coletadas pelo Prometheus (job "jaeger").
+    metrics:
+      level: detailed
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+
+extensions:
+  healthcheckv2:
+    use_v2: true
+    http:
+      endpoint: 0.0.0.0:13133
+
+  jaeger_query:
+    storage:
+      traces: es_main
+    http:
+      endpoint: 0.0.0.0:16686
+
+  jaeger_storage:
+    backends:
+      es_main:
+        elasticsearch:
+          server_urls:
+            - http://elasticsearch:9200
+          indices:
+            index_prefix: jaeger-main
+            spans:
+              replicas: 0   # nó único: evita cluster "yellow"
+            services:
+              replicas: 0
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+
+exporters:
+  jaeger_storage_exporter:
+    trace_storage: es_main

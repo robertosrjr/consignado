@@ -1,0 +1,23 @@
+# Prometheus local: scrape de 5 s (NFR-U1-16).
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Servicos executados em containers (perfil `apps`), pelos nomes do Compose.
+  - job_name: services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - ingestion-api:8080
+          - worker:8080
+          - mock-legacy:8080
+
+  # Servicos executados pela IDE no host (portas sugeridas; ajuste conforme cada servico).
+  - job_name: ide
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - host.docker.internal:18080   # ingestion-api
+          - host.docker.internal:18081   # worker
+          - host.docker.internal:18082   # mock-legacy

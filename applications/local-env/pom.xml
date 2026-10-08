@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>br.com.consignado.platform</groupId>
+    <artifactId>consignado-platform-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>local-env</artifactId>
+  <name>Consignado Platform - Local Environment (dev tool)</name>
+  <description>Ferramenta de desenvolvimento, NAO implantada: DynamoDB Local e ElasticMQ embarcados na JVM, emissor JWT local e executor do Dispatcher (sem Docker)</description>
+
+  <properties>
+    <!-- Ferramenta de desenvolvimento: sem gate de cobertura (documentado) -->
+    <jacoco.line.minimum>0.00</jacoco.line.minimum>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>shared</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>dispatcher-lambda</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>DynamoDBLocal</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.elasticmq</groupId>
+      <artifactId>elasticmq-rest-sqs_2.13</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>dynamodb</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sqs</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>url-connection-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Dev tool: sem a verificacao de convergencia (DynamoDBLocal e ElasticMQ trazem muitas dependencias) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce-build-rules</id>
+            <configuration>
+              <rules combine.self="override">
+                <requireJavaVersion>
+                  <version>[25,)</version>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[3.9.0,)</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <compilerArgs combine.self="override">
+            <arg>-Xlint:all,-processing,-serial,-classfile,-rawtypes,-unchecked</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+
+      <!-- Bibliotecas nativas do SQLite (DynamoDB Local) para testes unitarios e de integracao -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <sqlite4java.library.path>${project.build.directory}/native-libs</sqlite4java.library.path>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <sqlite4java.library.path>${project.build.directory}/native-libs</sqlite4java.library.path>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+
+      <!-- Classpath completo e bibliotecas nativas (sqlite4java) para executar sem Docker -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-runtime-libs</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/lib</outputDirectory>
+              <includeScope>runtime</includeScope>
+            </configuration>
+          </execution>
+          <execution>
+            <id>copy-native-libs</id>
+            <phase>process-test-resources</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <includeGroupIds>com.almworks.sqlite4java</includeGroupIds>
+              <includeTypes>dll,so,dylib,jnilib</includeTypes>
+              <stripVersion>true</stripVersion>
+              <outputDirectory>${project.build.directory}/native-libs</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- `mvn exec:java` sobe o ambiente local (nao e Spring Boot: classe main propria) -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <configuration>
+          <mainClass>br.com.consignado.platform.localenv.LocalEnvMain</mainClass>
+          <systemProperties>
+            <systemProperty>
+              <key>sqlite4java.library.path</key>
+              <value>${project.build.directory}/native-libs</value>
+            </systemProperty>
+          </systemProperties>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

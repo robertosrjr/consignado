@@ -1,0 +1,20 @@
+{
+  "interactiveLogin": false,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "grant_type",
+          "match": "client_credentials",
+          "claims": {
+            "sub": "partner-robot",
+            "aud": ["consignado-ingestion"]
+          }
+        }
+      ]
+    }
+  ]
+}

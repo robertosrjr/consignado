@@ -1,0 +1,43 @@
+# Secrets and sensitive configuration
+secrets/
+config/config.txt
+.env
+.env.local
+.env.*.local
+
+# Credentials
+*.pem
+*.ppk
+*.key
+*.keystore
+*.jks
+
+# Local Docker volumes and data
+prometheus-data/
+pushgateway-data/
+alertmanager-data/
+jaeger-data/
+grafana-data/
+elasticsearch-data/
+
+# Backup and temporary files
+backup*/
+*.bak
+*.tmp
+*~
+.DS_Store
+
+# IDE and OS
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+
+# Docker compose overrides
+docker-compose.override.yaml
+docker-compose.local.yaml
+
+# Logs
+*.log
+logs/

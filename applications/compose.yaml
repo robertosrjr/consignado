@@ -1,0 +1,205 @@
+# Ambiente local da PoC (Compose Specification). Perfil `infra` = infraestrutura; perfil `apps` = servicos
+# das unidades U2 a U5 (adicionados nas respectivas unidades).
+#
+#   cp .env.example .env   # preencha os segredos de teste (sem valores padrao)
+#   docker compose --profile infra up -d
+#
+# Imagens com tag exata (sem `latest`), verificadas nos registries em 2026-10-07.
+# ATENCAO: os healthchecks abaixo ainda NAO foram validados (Docker nao instalado na maquina de
+# desenvolvimento). Validar com `docker compose config` e `docker compose up` antes de U2.
+
+name: consignado-poc
+
+x-hardening: &hardening
+  cap_drop: ["ALL"]
+  security_opt: ["no-new-privileges:true"]
+  restart: "no"
+
+services:
+  dynamodb-local:
+    <<: *hardening
+    image: amazon/dynamodb-local:3.3.1
+    profiles: ["infra"]
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
+    ports: ["127.0.0.1:8000:8000"]
+    networks: [data]
+    tmpfs: ["/tmp"]
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8000"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  elasticmq:
+    <<: *hardening
+    image: softwaremill/elasticmq-native:1.7.1
+    profiles: ["infra"]
+    ports: ["127.0.0.1:9324:9324", "127.0.0.1:9325:9325"]
+    volumes: ["./infra/elasticmq/elasticmq.conf:/opt/elasticmq.conf:ro"]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:9325/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 256M}
+
+  local-kms:
+    <<: *hardening
+    image: nsmithuk/local-kms:3.12.0
+    profiles: ["infra"]
+    environment:
+      KMS_REGION: ${AWS_REGION:-sa-east-1}
+      KMS_ACCOUNT_ID: "111122223333"
+    ports: ["127.0.0.1:8081:8080"]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8080 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 128M}
+
+  postgres:
+    <<: *hardening
+    cap_add: ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"]
+    image: postgres:18.6
+    profiles: ["infra"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-consignado}
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql"]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+
+  oauth2-mock:
+    <<: *hardening
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.4
+    profiles: ["infra"]
+    environment:
+      SERVER_PORT: "8080"
+      JSON_CONFIG_PATH: /config/oauth2-mock.json
+    ports: ["127.0.0.1:8082:8080"]
+    volumes: ["./infra/oauth2-mock/oauth2-mock.json:/config/oauth2-mock.json:ro"]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/default/.well-known/openid-configuration || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 256M}
+
+  bootstrap:
+    <<: *hardening
+    image: amazon/aws-cli:2.37.10
+    profiles: ["infra"]
+    entrypoint: ["/bin/sh", "/init/init.sh"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?defina AWS_ACCESS_KEY_ID de teste no .env}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?defina AWS_SECRET_ACCESS_KEY de teste no .env}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-sa-east-1}
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+      SQS_ENDPOINT: http://elasticmq:9324
+      KMS_ENDPOINT: http://local-kms:8080
+    volumes: ["./infra/bootstrap/init.sh:/init/init.sh:ro"]
+    networks: [data]
+    depends_on:
+      dynamodb-local: {condition: service_healthy}
+      elasticmq: {condition: service_healthy}
+      local-kms: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 128M}
+
+  prometheus:
+    <<: *hardening
+    image: prom/prometheus:v3.15.0
+    profiles: ["infra"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-lifecycle=false
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    networks: [observability]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:9090/-/ready || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 256M}
+
+  grafana:
+    <<: *hardening
+    image: grafana/grafana:13.2.3
+    profiles: ["infra"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?defina GRAFANA_ADMIN_USER no .env}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?defina GRAFANA_ADMIN_PASSWORD no .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports: ["127.0.0.1:3000:3000"]
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks: [observability]
+    depends_on:
+      prometheus: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/api/health || wget -q --spider http://127.0.0.1:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 256M}
+
+  jaeger:
+    <<: *hardening
+    image: jaegertracing/jaeger:2.22.0
+    profiles: ["infra"]
+    ports: ["127.0.0.1:16686:16686", "127.0.0.1:4317:4317", "127.0.0.1:4318:4318"]
+    networks: [observability]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:16686/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 256M}
+
+networks:
+  data:
+  observability:
+
+volumes:
+  postgres-data:
+  prometheus-data:
+  grafana-data:

@@ -1,0 +1,24 @@
+# Imagem modelo dos servicos Java (Ingestion API, Worker, Mock Legacy). Politica Q4-A:
+# Eclipse Temurin 25 JRE com tag exata, multi-stage, usuario nao-root, sem `latest`.
+#
+# Uso (a partir de applications/):
+#   docker build -f docker/Dockerfile.service --build-arg MODULE=ingestion-api -t consignado/ingestion-api:dev .
+#
+# Premissa: cada servico define <finalName>app</finalName> e empacota um jar executavel
+# (target/app.jar). Fica ativo a partir de U2.
+
+FROM maven:3.9.11-eclipse-temurin-25 AS build
+ARG MODULE
+WORKDIR /workspace
+COPY . .
+RUN mvn -B -ntp -pl ${MODULE} -am -DskipTests package
+
+FROM eclipse-temurin:25.0.4.1_1-jre-noble
+ARG MODULE
+RUN groupadd --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app
+WORKDIR /app
+COPY --from=build --chown=10001:10001 /workspace/${MODULE}/target/app.jar /app/app.jar
+USER 10001:10001
+EXPOSE 8080
+# Probes de liveness/readiness via Actuator (Compose/ECS); sem HEALTHCHECK aqui.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-XX:+ExitOnOutOfMemoryError", "-jar", "/app/app.jar"]
