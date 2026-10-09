@@ -110,6 +110,24 @@ class DynamoDbInboxAdapterTest {
   }
 
   @Test
+  void should_report_a_creation_when_the_sdk_retry_finds_the_item_of_this_same_request() {
+    // 1a tentativa gravou e estourou o timeout; a retentativa do SDK encontra o proprio item
+    dynamo.toThrow =
+        ConditionalCheckFailedException.builder()
+            .message("condicao falhou")
+            .item(
+                Map.of(
+                    InboxAttributes.TRACING_ID, AttributeValue.builder().s("trace-1").build(),
+                    InboxAttributes.CREATED_AT,
+                        AttributeValue.builder().n("1700000000000").build()))
+            .build();
+
+    InboxWriteResult result = adapter.putIfAbsent(item());
+
+    assertThat(result.created()).isTrue();
+  }
+
+  @Test
   void should_still_report_a_duplicate_when_the_old_item_is_not_returned() {
     dynamo.toThrow = ConditionalCheckFailedException.builder().message("x").build();
 

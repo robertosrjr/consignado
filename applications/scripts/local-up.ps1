@@ -78,7 +78,7 @@ function Start-Java {
     Write-Host ("  {0,-12} pid {1}  (logs: .local\logs\{0}.*.log)" -f $Name, $p.Id)
 }
 
-function Wait-Port([int]$Port, [string]$Name, [int]$TimeoutSeconds = 90) {
+function Wait-Port([int]$Port, [string]$Name, [int]$TimeoutSeconds = 180) {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
         if (Test-NetConnection -ComputerName 127.0.0.1 -Port $Port -InformationLevel Quiet -WarningAction SilentlyContinue) { return }

@@ -42,10 +42,24 @@ public final class DynamoDbInboxAdapter implements DurableInboxPort {
       dynamo.putItem(request);
       return InboxWriteResult.createdNew();
     } catch (ConditionalCheckFailedException duplicate) {
+      if (writtenByThisRequest(duplicate.item(), item)) {
+        // A tentativa anterior do proprio SDK gravou e estourou o timeout; a retentativa encontrou
+        // o item desta requisicao. E criacao, nao duplicata.
+        return InboxWriteResult.createdNew();
+      }
       return fromExisting(duplicate.item());
     } catch (SdkException e) {
       throw new InboxUnavailableException("DurableInbox indisponivel", e);
     }
+  }
+
+  private static boolean writtenByThisRequest(
+      Map<String, AttributeValue> existing, InboxItem item) {
+    if (existing == null) {
+      return false;
+    }
+    AttributeValue tracing = existing.get(InboxAttributes.TRACING_ID);
+    return tracing != null && item.tracingId().equals(tracing.s());
   }
 
   private static InboxWriteResult fromExisting(Map<String, AttributeValue> existing) {
