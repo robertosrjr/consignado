@@ -26,7 +26,8 @@ public record IngestionProperties(
       @DefaultValue("DurableInbox") @NotBlank String tableName,
       @DefaultValue("P7D") Duration retention,
       @DefaultValue("500ms") Duration apiCallTimeout,
-      @DefaultValue("150ms") Duration apiCallAttemptTimeout) {}
+      @DefaultValue("150ms") Duration apiCallAttemptTimeout,
+      @DefaultValue("200") @Min(1) int maxConnections) {}
 
   /** Cotas por tenant (permissoes por segundo), locais a esta instancia. */
   public record Quota(

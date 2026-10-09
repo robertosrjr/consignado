@@ -20,7 +20,7 @@ public record WorkerProperties(
     @Valid @DefaultValue Queue queue,
     @Valid @DefaultValue Inbox inbox,
     @Valid @DefaultValue Payload payload,
-    @DefaultValue("64") @Min(1) int maxInFlight,
+    @DefaultValue("360") @Min(1) int maxInFlight,
     @DefaultValue("5") @Min(1) int metricsSamplePeriodSeconds) {
 
   /** Orcamento de vazao ate o legado (180 TPS dividido pelas instancias, com margem). */

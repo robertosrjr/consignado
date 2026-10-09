@@ -44,6 +44,8 @@ A gravação de estado e de eventos é atômica, o que dá o rastro completo (ou
 
 Circuit breaker em volta do cliente HTTP do legado. Falha transitória não vira erro de negócio: a mensagem volta à fila com backoff, e o redrive do SQS a envia para a DLQ depois do limite de tentativas. Assim uma indisponibilidade do legado não transforma propostas válidas em propostas falhadas.
 
+Com o circuito **aberto**, o laço de despacho para de retirar mensagens da fila (back-pressure): a recusa local do circuito não gasta tentativa de entrega e não leva proposta válida para a DLQ. Com o circuito **semi-aberto**, sai uma chamada de prova por vez. Antes dessa correção, uma rajada lenta abria o circuito e as mensagens retiradas nesse intervalo esgotavam as tentativas em segundos.
+
 ## Configuração
 
 | Variável | Padrão | Observação |
@@ -55,14 +57,18 @@ Circuit breaker em volta do cliente HTTP do legado. Falha transitória não vira
 | `WORKER_BUDGET_TOTAL_TPS` | 180 | teto do legado |
 | `WORKER_BUDGET_INSTANCES` | 1 | divide o teto entre as instâncias |
 | `WORKER_BUDGET_FAST_SHARE` | 0.70 | piso da fast lane |
-| `WORKER_MAX_IN_FLIGHT` | 64 | concorrência — **ver o alerta abaixo** |
+| `WORKER_MAX_IN_FLIGHT` | 360 | concorrência — **ver o alerta abaixo** |
 | `WORKER_QUEUE_TYPE` | sqs | `memory` nos testes |
 
 ### Atenção ao `WORKER_MAX_IN_FLIGHT`
 
-Pela Lei de Little, sustentar `λ` mensagens por segundo com latência `W` exige `λ × W` em processamento simultâneo. Com 180 por segundo e 1 s de latência do legado, são **180 em voo**. O padrão de 64 limita a vazão a `64 ÷ W`: com 500 ms, o máximo é 128 por segundo, abaixo do teto que a PoC quer provar.
+Pela Lei de Little, sustentar `λ` mensagens por segundo com latência `W` exige `λ × W` em processamento simultâneo. A vazão máxima fica em `max-in-flight ÷ W`.
 
-Antes do teste de carga, compare `worker_in_flight` com `worker_in_flight_max`. Se encostar no limite, o gargalo é a concorrência, não o orçamento. Threads virtuais tornam barato elevar esse número.
+O padrão de **360** é o orçamento (180 por segundo) vezes o limite de chamada lenta do circuit breaker (`WORKER_LEGACY_SLOW_CALL_THRESHOLD`, 2 s). Abaixo de 2 s de latência, o orçamento de 180 é sustentado. Acima disso, o circuit breaker já trata o legado como degradado e abre, então não há razão para manter mais chamadas em voo. O antigo padrão de 64 limitava a vazão a 128 por segundo com latência de 500 ms, abaixo do teto que a PoC quer provar.
+
+O valor maior não sobrecarrega o legado: quem limita as chamadas por segundo é o orçamento de vazão, não o semáforo. O semáforo continua como bulkhead, limitando a memória e as conexões quando o legado fica lento. Se mudar o orçamento ou o limite de chamada lenta, recalcule `max-in-flight` como `orçamento × limite`.
+
+Antes do teste de carga, compare `worker_in_flight` com `worker_in_flight_max`. Se encostar no limite, o gargalo é a concorrência, não o orçamento.
 
 ## Métricas
 

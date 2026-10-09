@@ -4,8 +4,8 @@
 - **Project Name**: Platform Engine - PoC Credito Consignado (Ingestao Massiva e Resiliencia)
 - **Project Type**: Greenfield
 - **Start Date**: 2026-10-07T12:51:04Z
-- **Current Stage**: CONSTRUCTION - aplicacao Java local construida e verde (U1-U5 + local-env); aguardando subir os servicos localmente. Terraform (U6) adiado; observabilidade (U7) parcial
-- **Last Build**: 2026-10-08 - `mvn verify` BUILD SUCCESS, 9 modulos, 354 testes, 0 falhas; gates de cobertura (80%), Spotless, Enforcer e ArchUnit aprovados
+- **Current Stage**: CONSTRUCTION - aplicacao Java local construida e verde (U1-U5 + local-env); ambiente local sobe de ponta a ponta (2026-10-09). Proximo: plano de teste de carga (JMeter). Terraform (U6) adiado; observabilidade (U7) parcial
+- **Last Build**: 2026-10-09 - `mvn verify` BUILD SUCCESS, 9 modulos, 356 testes, 0 falhas; gates de cobertura (80%), Spotless, Enforcer e ArchUnit aprovados
 
 ## Workspace State
 - **Existing Code**: No
@@ -37,7 +37,7 @@
   - [ ] U5 worker: codigo COMPLETO e verde (orcamento de vazao com piso 70/30 e emprestimo, circuit breaker, estado/outbox em memoria). Aprovacao PENDENTE
   - [ ] U6 infrastructure-terraform: ADIADO por decisao do usuario; o usuario esta montando `infrastructure/` por conta propria (nao alterar)
   - [ ] U7 load-tests-and-dashboards: PARCIAL. Fonte CloudWatch provisionada no Grafana + politica IAM + mapa de metricas. Faltam: paineis JSON, scripts k6, regras de alerta definitivas
-- [ ] Build and Test: PARCIAL. `mvn verify` verde; ITs do ingestion-api rodam com `-Pintegration` (DynamoDB Local embarcado). Faltam: ITs do worker, teste de pipeline ponta a ponta e subir os servicos localmente (`scripts/local-up.ps1` ainda nao concluiu uma subida completa)
+- [ ] Build and Test: PARCIAL. `mvn verify` verde; ITs do ingestion-api rodam com `-Pintegration` (DynamoDB Local embarcado). `scripts/local-up.ps1` concluiu a subida completa em 2026-10-09 e o fluxo foi verificado manualmente. Faltam: ITs do worker e teste de carga com evidencia
 
 ### OPERATIONS PHASE
 - [ ] Operations (PLACEHOLDER)
@@ -57,8 +57,8 @@
 - **Grafana**: CloudWatch como fonte de dados (SQS/DLQ, Lambda, DynamoDB, EMF do Dispatcher); Prometheus para a aplicacao; Pushgateway mantido ate a aplicacao subir; sem Elasticsearch por ora (Jaeger com Badger)
 
 ## Riscos registrados (nao resolvidos)
-- **Concorrencia x vazao (Lei de Little)**: `worker.max-in-flight` padrao 64 limita a vazao a `64 / latencia`. Para sustentar 180 TPS com latencia de 1 s seriam necessarios 180 em voo. Medir com `worker_in_flight` antes do teste de carga
-- **Teste e2e sensivel a tempo**: `WorkerEndToEndTest` falhou uma vez por tempo de parede sob carga da maquina (sem excecao); passa isolado. Tornar a condicao independente de tempo se repetir
+- **Concorrencia x vazao (Lei de Little)**: RESOLVIDO em 2026-10-09. `worker.max-in-flight` padrao 360 (180 TPS x 2 s do slow-call); pool HTTP do DynamoDB dimensionado (ingestion 200, worker = max-in-flight); ZGC + heap fixo na ingestion-api. Subir a concorrencia expos bug real (circuito aberto levava propostas validas a DLQ), corrigido com back-pressure (`LegacyAvailabilityPort`). Medir com `worker_in_flight` no teste de carga
+- **Teste e2e sensivel a tempo**: RESOLVIDO em 2026-10-09. A causa era o circuito aberto levando mensagens a DLQ (corrigido com back-pressure). Resta uma janela de corrida conhecida: o circuito pode abrir entre o despacho e o envio, e a recusa local conta como tentativa interna (sem chamada ao legado). Tratamento previsto na M2 (distincao "antes do envio")
 - **Correlacao log/trace**: sem exportador OTLP ativo nao ha traceId no log para cruzar com o Jaeger
 
 ## Aprovacoes pendentes do workflow

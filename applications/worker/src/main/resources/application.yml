@@ -40,5 +40,5 @@ worker:
     # Chave AES-256 em Base64 (a mesma da Ingestion API); obrigatoria no modo local; sem valor padrao.
     local-key: ${WORKER_PAYLOAD_LOCAL_KEY:}
     kms-key-id: ${WORKER_PAYLOAD_KMS_KEY_ID:}
-  max-in-flight: ${WORKER_MAX_IN_FLIGHT:64}
+  max-in-flight: ${WORKER_MAX_IN_FLIGHT:360}
   metrics-sample-period-seconds: ${WORKER_METRICS_SAMPLE_PERIOD_SECONDS:5}

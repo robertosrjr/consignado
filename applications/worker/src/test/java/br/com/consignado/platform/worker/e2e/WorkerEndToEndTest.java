@@ -41,6 +41,9 @@ import org.springframework.test.context.DynamicPropertySource;
       "worker.inbox.type=memory",
       "worker.legacy.api-key=chave-teste",
       "worker.budget.total-tps=500",
+      // a fila em memoria respeita o atraso de reentrega; backoff curto para o teste
+      "worker.queue.retry-base-delay=100ms",
+      "worker.queue.retry-max-delay=500ms",
       "worker.metrics-sample-period-seconds=1"
     })
 class WorkerEndToEndTest {
@@ -116,8 +119,11 @@ class WorkerEndToEndTest {
     // DoD: o legado nunca recebeu mais que o orcamento por janela de 1 s (500 TPS no teste)
     assertThat(LEGACY.maxRequestsInAnyWindow(1_000_000_000L)).isLessThanOrEqualTo(500);
 
-    // recuperacao da falha transitoria: tentou duas vezes com a mesma chave
-    assertThat(repository.find(flaky).orElseThrow().attempts()).isEqualTo(2);
+    // recuperacao da falha transitoria: o legado recebeu a mesma chave duas vezes (503 e sucesso).
+    // O contador interno pode ser maior: uma recusa local do circuito, entre o despacho e o envio,
+    // tambem conta como tentativa (distincao "antes do envio" proposta na M2).
+    assertThat(LEGACY.requestsFor(flaky.toString())).isEqualTo(2);
+    assertThat(repository.find(flaky).orElseThrow().attempts()).isGreaterThanOrEqualTo(2);
     assertThat(repository.find(flaky).orElseThrow().status()).isEqualTo(ProposalStatus.CONFIRMED);
 
     // mensagem sem item no inbox nao criou proposta

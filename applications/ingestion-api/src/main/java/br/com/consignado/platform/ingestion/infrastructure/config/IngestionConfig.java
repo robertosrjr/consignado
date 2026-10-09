@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.awscore.retry.AwsRetryStrategy;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.http.apache5.Apache5HttpClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.kms.KmsClient;
 
@@ -64,6 +65,7 @@ public class IngestionConfig {
   DynamoDbClient dynamoDbClient(IngestionProperties properties) {
     IngestionProperties.Inbox inbox = properties.inbox();
     return DynamoDbClient.builder()
+        .httpClientBuilder(Apache5HttpClient.builder().maxConnections(inbox.maxConnections()))
         .overrideConfiguration(
             ClientOverrideConfiguration.builder()
                 .apiCallTimeout(inbox.apiCallTimeout())

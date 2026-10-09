@@ -30,6 +30,7 @@ public final class StubLegacy implements AutoCloseable {
   public final AtomicInteger duplicateRequests = new AtomicInteger();
   public final Set<String> uniqueKeys = ConcurrentHashMap.newKeySet();
   public final Set<String> failOnceFor = ConcurrentHashMap.newKeySet();
+  private final Map<String, AtomicInteger> requestsByKey = new ConcurrentHashMap<>();
   public final List<Long> arrivals = Collections.synchronizedList(new ArrayList<>());
   public volatile Map<String, String> lastHeaders = Map.of();
   public volatile String lastBody = "";
@@ -59,6 +60,7 @@ public final class StubLegacy implements AutoCloseable {
     arrivals.add(System.nanoTime());
     requests.incrementAndGet();
     String key = exchange.getRequestHeaders().getFirst("Idempotency-Key");
+    requestsByKey.computeIfAbsent(String.valueOf(key), k -> new AtomicInteger()).incrementAndGet();
     lastBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
     lastHeaders =
         Map.of(
@@ -96,6 +98,12 @@ public final class StubLegacy implements AutoCloseable {
     exchange.sendResponseHeaders(code, bytes.length);
     exchange.getResponseBody().write(bytes);
     exchange.close();
+  }
+
+  /** Requisicoes recebidas com a chave de idempotencia informada. */
+  public int requestsFor(String key) {
+    AtomicInteger count = requestsByKey.get(key);
+    return count == null ? 0 : count.get();
   }
 
   /** Maior numero de requisicoes em qualquer janela de {@code windowNanos}. */

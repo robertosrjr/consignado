@@ -12,7 +12,9 @@
 #>
 [CmdletBinding()]
 param(
-    [int]$LegacyCapacityTps = 180
+    [int]$LegacyCapacityTps = 180,
+    # Heap fixo da ingestion-api (Xms = Xmx): sem redimensionamento durante o pico
+    [string]$IngestionHeap = '1g'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -112,7 +114,10 @@ try {
         INGESTION_JWT_ISSUER = $issuer
         INGESTION_JWT_AUDIENCE = 'consignado-ingestion'
         INGESTION_API_DOCS_ENABLED = 'true'
-    }) -JavaArgs @('-jar', $jars.ingestion)
+    }) -JavaArgs @(
+        # ZGC geracional (padrao no Java 25 com UseZGC): pausas abaixo de 1 ms para o p95 < 100 ms
+        '-XX:+UseZGC', "-Xms$IngestionHeap", "-Xmx$IngestionHeap", '-XX:+AlwaysPreTouch',
+        '-jar', $jars.ingestion)
 
     # 4) worker (URLs das filas: as mesmas que o local-env imprime)
     Start-Java -Name 'worker' -EnvVars ($awsEnv + @{

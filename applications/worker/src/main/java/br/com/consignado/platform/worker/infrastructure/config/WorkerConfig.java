@@ -21,6 +21,7 @@ import br.com.consignado.platform.worker.infrastructure.adapter.in.messaging.Dis
 import br.com.consignado.platform.worker.infrastructure.adapter.out.budget.FixedPerTaskBudgetAdapter;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.inbox.DynamoDbInboxReadAdapter;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.inbox.InMemoryInboxReadAdapter;
+import br.com.consignado.platform.worker.infrastructure.adapter.out.legacy.CircuitBreakerAvailabilityAdapter;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.legacy.LegacyHttpAdapter;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.legacy.MeteredLegacyCorePort;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.messaging.InMemoryLaneQueue;
@@ -43,6 +44,7 @@ import java.util.concurrent.Executors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.http.apache5.Apache5HttpClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -162,7 +164,8 @@ public class WorkerConfig {
       ProcessProposalUseCase useCase,
       ExecutorService dispatchExecutor,
       WorkerProperties properties,
-      WorkerMetrics metrics) {
+      WorkerMetrics metrics,
+      CircuitBreaker legacyCircuitBreaker) {
     return new ProposalDispatchLoop(
         queue,
         budget,
@@ -171,7 +174,8 @@ public class WorkerConfig {
         dispatchExecutor,
         properties.maxInFlight(),
         new RetryBackoff(properties.queue().retryBaseDelay(), properties.queue().retryMaxDelay()),
-        metrics);
+        metrics,
+        new CircuitBreakerAvailabilityAdapter(legacyCircuitBreaker));
   }
 
   /**
@@ -239,8 +243,12 @@ public class WorkerConfig {
     }
 
     @Bean(destroyMethod = "close")
-    DynamoDbClient dynamoDbClient() {
-      return DynamoDbClient.create();
+    DynamoDbClient dynamoDbClient(WorkerProperties properties) {
+      // Uma conexao por mensagem em voo: o pool padrao (50) seria o gargalo abaixo de
+      // max-in-flight.
+      return DynamoDbClient.builder()
+          .httpClientBuilder(Apache5HttpClient.builder().maxConnections(properties.maxInFlight()))
+          .build();
     }
 
     @Bean

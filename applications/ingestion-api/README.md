@@ -67,7 +67,13 @@ Sem valor padrão (o serviço não sobe sem elas):
 | `INGESTION_JWT_JWK_SET_URI` | JWKS do emissor |
 | `INGESTION_PAYLOAD_LOCAL_KEY` | chave AES-256 em Base64 (modo local) — a **mesma** do worker |
 
-Principais opcionais: `INGESTION_INBOX_TYPE` (`dynamodb` ou `memory`), `INGESTION_INBOX_TABLE`, `INGESTION_QUOTA_DEFAULT_PER_SECOND`, `INGESTION_MAX_BODY_BYTES`, `INGESTION_PAYLOAD_MODE` (`local` ou `kms`), `INGESTION_API_DOCS_ENABLED`.
+Principais opcionais: `INGESTION_INBOX_TYPE` (`dynamodb` ou `memory`), `INGESTION_INBOX_TABLE`, `INGESTION_QUOTA_DEFAULT_PER_SECOND`, `INGESTION_MAX_BODY_BYTES`, `INGESTION_PAYLOAD_MODE` (`local` ou `kms`), `INGESTION_API_DOCS_ENABLED`, `INGESTION_INBOX_MAX_CONNECTIONS` (padrão 200).
+
+### Dimensionamento para o pico
+
+- **Pool HTTP do DynamoDB.** O padrão do SDK é 50 conexões. Pela Lei de Little, 10.000 req/s com o DynamoDB a ~20 ms exigem ~200 em uso. Com menos, as requisições esperam por conexão, estouram o timeout de 500 ms e viram `503`. Ajuste `INGESTION_INBOX_MAX_CONNECTIONS` se a latência medida for outra.
+- **JVM.** O `local-up.ps1` sobe a borda com ZGC (pausas abaixo de 1 ms, para o p95 abaixo de 100 ms), heap fixo (`-Xms` igual a `-Xmx`, padrão 1 GB, parâmetro `-IngestionHeap`) e `AlwaysPreTouch`. Use as mesmas flags no ambiente do teste de carga.
+- **Primeira chamada após a subida.** Com o DynamoDB ainda frio, a primeira gravação pode passar do timeout e responder `503` mesmo tendo gravado. O reenvio com a mesma `Idempotency-Key` responde `202 DUPLICATE_ACCEPTED`.
 
 ## Documentação interativa
 

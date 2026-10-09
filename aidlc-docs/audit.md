@@ -384,3 +384,33 @@
 **Context**: Construction - documentacao. Links validados: 0 quebrados.
 
 ---
+## Subida local e documentacao por publico
+**Timestamp**: 2026-10-09T17:10:00Z
+**User Input**: "onde paramos?" / "qual comando eu uso para subir?" / "[ERROR] Failed to execute goal org.apache.maven.plugins:maven-clean-plugin:3.5.0:clean (default-clean) on project mock-legacy: Failed to clean project: Failed to delete ...\mock-legacy\target\app.jar: ... O arquivo já está sendo usado por outro processo -> [Help 1]" / "rode o coomando vc e veja o resultado" / "nos  temos um documento explicando o que é cada projeto, acho que sim né?" / "preciso de um outro fazendo a jornada passoa passo a nivel de usuario de negócio" / "e preciso de utro a nivel de usuario de aplicação,  um manual para saber como usar via cliente rest"
+**AI Response**: Encerrados 2 processos Java remanescentes (local-env, mock-legacy) que travavam o app.jar; mvn install OK; local-up.ps1 concluiu a primeira subida completa (4 processos, health UP). Fluxo testado de ponta a ponta: proposta CONFIRMED no worker, legacy_averbacoes_total unique=1 duplicate=0; 401/403/400 conferidos. Achado: primeira chamada apos a subida retornou 503 (ApiCallTimeoutException no DynamoDB Local frio) mas a gravacao concluiu; reenvio com a mesma chave deu 202 DUPLICATE_ACCEPTED. Criados docs/jornada-da-proposta.md (negocio) e docs/manual-api-rest.md (cliente REST), linkados no README raiz.
+**Context**: Construction - Build and Test (subida local) e documentacao.
+
+---
+## Arquitetura como pattern
+**Timestamp**: 2026-10-09T17:40:00Z
+**User Input**: "entre os robos e o ingestion api, não teria que ter um apigateway (não quero validação, só estou perguntando)" / "nosso worker será feito em que?" / "não estou vendo ele no projeto," / "e esse poder ser um patterns?" / "não!! esse projeto, pode ser um pattern?" / "documente essa resposta"
+**AI Response**: Explicado ALB+WAF em vez de API Gateway (cota regional de 10k req/s, custo por requisicao, latencia). Worker: Java 25/Spring Boot em applications/worker; destino de implantacao pendente (T1). Criado docs/pattern-borda-de-absorcao.md (contexto, problema, forcas, solucao, consequencias, quando nao usar, patterns compostos, mapeamento, caminho de reuso), linkado no README raiz.
+**Context**: Construction - documentacao.
+
+---
+
+## Prioridades de desempenho e correcao do back-pressure
+**Timestamp**: 2026-10-09T18:15:00Z
+**User Input**: "quais os pontos que fazem diferença nessa arquitetura. Por exemplo java 25, virtualtheresds, stream, concorrencia, *Streams*, *CompletableFuture*, *Reflection*, *Garbage Collection/JVM* e *Design Patterns*" / "pode dar stop no projeto e ajustar a Prioridades sugerias" / "quando terminar a tarefa analie docs/melhoria-proposta.md" / "onde paramos, caiu a energia" / resposta: "Pausar o despacho (Recommended)" / "pattern-borda-de-absorcao.md e melhoria-proposta.md" / "vc analisou os documentos pattern-borda-de-absorcao.md e melhoria-proposta.md ?"
+**AI Response**: Ambiente parado (local-down). ZGC, heap fixo 1g e AlwaysPreTouch na ingestion-api (local-up.ps1). Pool HTTP do DynamoDB: 200 na ingestion-api (INGESTION_INBOX_MAX_CONNECTIONS), max-in-flight no worker; cliente trocado para apache5-client (apache-client depreciado no SDK 2.55). worker.max-in-flight 64 -> 360. Bug real exposto pelo WorkerEndToEndTest: com circuito aberto, 90 propostas validas foram para a DLQ em < 5 s. Corrigido: LegacyAvailabilityPort + CircuitBreakerAvailabilityAdapter (aberto: nada sai da fila; semi-aberto: uma prova por vez); InMemoryLaneQueue passa a respeitar o atraso de reentrega. Testes novos para o laco, o adaptador e a fila. Build: ingestion-api SUCCESS; worker 135 testes, 0 falhas. Analise de docs/melhoria-proposta.md e docs/pattern-borda-de-absorcao.md apresentada ao usuario.
+**Context**: Construction U3/U5 - desempenho e resiliencia.
+
+---
+
+## Correcoes nos documentos de melhoria e pattern
+**Timestamp**: 2026-10-09T18:30:00Z
+**User Input**: "sim"
+**AI Response**: melhoria-proposta.md: secao 0 movida para antes da secao 1; nova subsecao "Ja corrigido (09/10/2026)" (pool HTTP do DynamoDB e back-pressure do circuito aberto); M6 atualizada (local-up completou a subida); 7.3 com o risco de particao quente (~1.000 WCU/s no mesmo item no duplicate-storm com transacao) e mitigacoes. pattern-borda-de-absorcao.md: regra 10 explicita que pausar e parar de retirar da fila; linha nova no mapeamento.
+**Context**: Construction - documentacao.
+
+---

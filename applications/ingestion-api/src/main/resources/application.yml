@@ -13,6 +13,8 @@ ingestion:
     type: ${INGESTION_INBOX_TYPE:dynamodb}
     table-name: ${INGESTION_INBOX_TABLE:DurableInbox}
     retention: ${INGESTION_INBOX_RETENTION:P7D}
+    # Pool HTTP do DynamoDB (Lei de Little: 10.000 req/s x ~20 ms = 200 conexoes em uso)
+    max-connections: ${INGESTION_INBOX_MAX_CONNECTIONS:200}
   quota:
     default-per-second: ${INGESTION_QUOTA_DEFAULT_PER_SECOND:100}
     max-tenants: ${INGESTION_QUOTA_MAX_TENANTS:10000}

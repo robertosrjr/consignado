@@ -5,7 +5,7 @@
 ![Maven](https://img.shields.io/badge/Maven-3.9+-C71A36?logo=apachemaven&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-DynamoDB_·_SQS_·_Lambda_·_KMS-232F3E?logo=amazonwebservices&logoColor=white)
 ![Arquitetura](https://img.shields.io/badge/Arquitetura-Hexagonal-6E4A9E)
-![Testes](https://img.shields.io/badge/testes-354_passando-success)
+![Testes](https://img.shields.io/badge/testes-356_passando-success)
 ![Cobertura](https://img.shields.io/badge/cobertura-m%C3%ADnimo_80%25-success)
 ![Observabilidade](https://img.shields.io/badge/Observabilidade-Prometheus_·_Grafana_·_Jaeger-E6522C?logo=prometheus&logoColor=white)
 ![LGPD](https://img.shields.io/badge/LGPD-PII_mascarada_na_telemetria-0A7B83)
@@ -26,6 +26,8 @@
 Prova de conceito de **ingestão massiva com proteção de sistema legado**.
 
 > Contexto de negócio, números de mercado e critérios de homologação vêm de [sdd/narrativas/](sdd/narrativas/) — a narrativa executiva e o cenário real do "apagão das 00:01".
+>
+> Guias por público: [A jornada de uma proposta](docs/jornada-da-proposta.md) (negócio, passo a passo) · [Manual da API REST](docs/manual-api-rest.md) (como enviar propostas por Postman, Insomnia, curl ou PowerShell) · [Pattern: Borda de Absorção](docs/pattern-borda-de-absorcao.md) (a arquitetura como pattern reutilizável) · [Melhorias propostas](docs/melhoria-proposta.md) (revisão adversarial e plano M1 a M9).
 
 ---
 
@@ -204,4 +206,4 @@ O desenvolvimento segue o workflow AI-DLC Lite descrito em `CLAUDE.md`. O estado
 
 ## Estado atual
 
-Aplicação construída e verde: `mvn verify` passa nos 9 módulos com 354 testes. Pendentes: subir os serviços localmente de ponta a ponta, testes de integração do worker, painéis do Grafana, scripts k6 e o Terraform.
+Aplicação construída e verde: `mvn verify` passa nos 9 módulos com 356 testes. O ambiente local sobe de ponta a ponta (`scripts\local-up.ps1`), com o fluxo proposta → fila → worker → legado verificado. Ajustes de desempenho e resiliência feitos em 09/10/2026: pool HTTP do DynamoDB, concorrência do worker, ZGC na borda e back-pressure com o circuito aberto. Pendentes: teste de carga com evidência medida, painéis do Grafana, Terraform e as melhorias M1 a M9 de [docs/melhoria-proposta.md](docs/melhoria-proposta.md).

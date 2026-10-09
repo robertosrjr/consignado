@@ -6,6 +6,7 @@ import br.com.consignado.platform.worker.application.port.in.ProcessingOutcome;
 import br.com.consignado.platform.worker.application.port.out.BudgetSnapshot;
 import br.com.consignado.platform.worker.application.port.out.DispatchObserver;
 import br.com.consignado.platform.worker.application.port.out.LaneQueuePort;
+import br.com.consignado.platform.worker.application.port.out.LegacyAvailabilityPort;
 import br.com.consignado.platform.worker.application.port.out.QueuedMessage;
 import br.com.consignado.platform.worker.application.port.out.ThroughputBudgetPort;
 import br.com.consignado.platform.worker.domain.LaneBudgetAllocator;
@@ -22,7 +23,8 @@ import java.util.function.BooleanSupplier;
  * Laco de despacho: a cada passo escolhe a lane pelo orcamento (piso 70/30 com emprestimo e teto do
  * legado), retira uma mensagem, consome a permissao e processa em outra thread (virtual), com
  * concorrencia limitada. Conclui a mensagem em {@code COMPLETED}; nos demais casos devolve a fila
- * com backoff (o redrive do SQS limita as tentativas e envia a DLQ).
+ * com backoff (o redrive do SQS limita as tentativas e envia a DLQ). Com o legado indisponivel
+ * (circuito aberto), para de retirar mensagens: a protecao local nao gasta tentativas de entrega.
  */
 public final class ProposalDispatchLoop {
 
@@ -38,6 +40,7 @@ public final class ProposalDispatchLoop {
   private final int maxInFlight;
   private final RetryBackoff backoff;
   private final DispatchObserver observer;
+  private final LegacyAvailabilityPort legacy;
 
   public ProposalDispatchLoop(
       LaneQueuePort queue,
@@ -48,6 +51,28 @@ public final class ProposalDispatchLoop {
       int maxInFlight,
       RetryBackoff backoff,
       DispatchObserver observer) {
+    this(
+        queue,
+        budget,
+        useCase,
+        allocator,
+        executor,
+        maxInFlight,
+        backoff,
+        observer,
+        LegacyAvailabilityPort.ALWAYS_AVAILABLE);
+  }
+
+  public ProposalDispatchLoop(
+      LaneQueuePort queue,
+      ThroughputBudgetPort budget,
+      ProcessProposalUseCase useCase,
+      LaneBudgetAllocator allocator,
+      Executor executor,
+      int maxInFlight,
+      RetryBackoff backoff,
+      DispatchObserver observer,
+      LegacyAvailabilityPort legacy) {
     if (maxInFlight < 1) {
       throw new IllegalArgumentException("Concorrencia maxima invalida");
     }
@@ -60,6 +85,7 @@ public final class ProposalDispatchLoop {
     this.maxInFlight = maxInFlight;
     this.backoff = backoff;
     this.observer = observer;
+    this.legacy = legacy;
   }
 
   /**
@@ -86,6 +112,9 @@ public final class ProposalDispatchLoop {
 
   /** Um passo do laco; retorna {@code true} se uma mensagem foi despachada. */
   public boolean runOnce() {
+    if (!legacyAccepting()) {
+      return false;
+    }
     if (!inFlight.tryAcquire()) {
       return false;
     }
@@ -115,6 +144,18 @@ public final class ProposalDispatchLoop {
         inFlight.release();
       }
     }
+  }
+
+  /**
+   * Back-pressure: com o legado indisponivel nada sai da fila; em teste, uma chamada de prova por
+   * vez. O laco e a unica thread que despacha, entao a checagem de {@code inFlight()} nao disputa.
+   */
+  private boolean legacyAccepting() {
+    return switch (legacy.availability()) {
+      case AVAILABLE -> true;
+      case PROBING -> inFlight() == 0;
+      case UNAVAILABLE -> false;
+    };
   }
 
   private LaneView view(Lane lane, BudgetSnapshot.LaneBudget laneBudget) {

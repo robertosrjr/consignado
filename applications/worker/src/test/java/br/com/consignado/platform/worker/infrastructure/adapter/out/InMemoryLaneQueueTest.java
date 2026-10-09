@@ -10,6 +10,7 @@ import br.com.consignado.platform.worker.application.port.out.QueuedMessage;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.messaging.InMemoryLaneQueue;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
 class InMemoryLaneQueueTest {
@@ -38,11 +39,25 @@ class InMemoryLaneQueueTest {
     queue.enqueue(Lane.STANDARD, message(Lane.STANDARD));
     QueuedMessage first = queue.poll(Lane.STANDARD).orElseThrow();
 
-    queue.release(first, Duration.ofSeconds(5));
+    queue.release(first, Duration.ZERO);
 
     QueuedMessage second = queue.poll(Lane.STANDARD).orElseThrow();
     assertThat(second.receiveCount()).isEqualTo(2);
     assertThat(second.message()).isEqualTo(first.message());
+  }
+
+  @Test
+  void should_hide_released_messages_until_the_delay_expires() {
+    AtomicLong now = new AtomicLong();
+    InMemoryLaneQueue delayed = new InMemoryLaneQueue(3, now::get);
+    delayed.enqueue(Lane.FAST, message(Lane.FAST));
+
+    delayed.release(delayed.poll(Lane.FAST).orElseThrow(), Duration.ofSeconds(5));
+
+    assertThat(delayed.hasMessages(Lane.FAST)).isFalse();
+    assertThat(delayed.poll(Lane.FAST)).isEmpty();
+    now.addAndGet(Duration.ofSeconds(5).toNanos());
+    assertThat(delayed.poll(Lane.FAST).orElseThrow().receiveCount()).isEqualTo(2);
   }
 
   @Test

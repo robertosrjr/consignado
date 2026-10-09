@@ -11,6 +11,7 @@ import br.com.consignado.platform.worker.application.port.in.ProcessingOutcome;
 import br.com.consignado.platform.worker.application.port.out.BudgetSnapshot;
 import br.com.consignado.platform.worker.application.port.out.DispatchObserver;
 import br.com.consignado.platform.worker.application.port.out.LaneQueuePort;
+import br.com.consignado.platform.worker.application.port.out.LegacyAvailabilityPort.Availability;
 import br.com.consignado.platform.worker.application.port.out.QueuedMessage;
 import br.com.consignado.platform.worker.application.port.out.ThroughputBudgetPort;
 import br.com.consignado.platform.worker.application.usecase.ProposalDispatchLoop;
@@ -116,6 +117,8 @@ class ProposalDispatchLoopTest {
   private final RecordingObserver observer = new RecordingObserver();
   private Function<ProposalMessage, ProcessingOutcome> behavior = m -> ProcessingOutcome.COMPLETED;
 
+  private Availability availability = Availability.AVAILABLE;
+
   private ProposalDispatchLoop loop(Executor executor, int maxInFlight) {
     return new ProposalDispatchLoop(
         queue,
@@ -125,7 +128,39 @@ class ProposalDispatchLoopTest {
         executor,
         maxInFlight,
         new RetryBackoff(Duration.ofSeconds(5), Duration.ofSeconds(60)),
-        observer);
+        observer,
+        () -> availability);
+  }
+
+  @Test
+  void should_leave_messages_in_the_queue_while_the_legacy_is_unavailable() {
+    queue.add(Lane.FAST, 1);
+    availability = Availability.UNAVAILABLE;
+    ProposalDispatchLoop loop = loop(Runnable::run, 4);
+
+    assertThat(loop.runOnce()).isFalse();
+
+    assertThat(queue.polls).isZero();
+    assertThat(queue.released).isEmpty();
+    assertThat(budget.consumed).isEmpty();
+    assertThat(queue.hasMessages(Lane.FAST)).isTrue();
+  }
+
+  @Test
+  void should_send_one_probe_at_a_time_while_the_legacy_is_being_tested() {
+    queue.add(Lane.FAST, 1);
+    queue.add(Lane.FAST, 1);
+    availability = Availability.PROBING;
+    List<Runnable> pending = new ArrayList<>();
+    ProposalDispatchLoop loop = loop(pending::add, 4);
+
+    assertThat(loop.runOnce()).isTrue();
+    assertThat(loop.runOnce()).isFalse();
+    assertThat(loop.inFlight()).isEqualTo(1);
+
+    pending.removeFirst().run();
+
+    assertThat(loop.runOnce()).isTrue();
   }
 
   @Test

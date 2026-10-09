@@ -67,8 +67,7 @@
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
-      <artifactId>apache-client</artifactId>
-      <scope>runtime</scope>
+      <artifactId>apache5-client</artifactId>
     </dependency>
     <dependency>
       <groupId>io.github.resilience4j</groupId>
