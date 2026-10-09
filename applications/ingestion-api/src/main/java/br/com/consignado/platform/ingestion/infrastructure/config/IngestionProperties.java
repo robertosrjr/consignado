@@ -27,7 +27,9 @@ public record IngestionProperties(
       @DefaultValue("P7D") Duration retention,
       @DefaultValue("500ms") Duration apiCallTimeout,
       @DefaultValue("150ms") Duration apiCallAttemptTimeout,
-      @DefaultValue("200") @Min(1) int maxConnections) {}
+      @DefaultValue("200") @Min(1) int maxConnections,
+      @DefaultValue("60s") Duration recentKeysTtl,
+      @DefaultValue("100000") @Min(0) int recentKeysMaxEntries) {}
 
   /** Cotas por tenant (permissoes por segundo), locais a esta instancia. */
   public record Quota(

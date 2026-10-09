@@ -414,3 +414,19 @@
 **Context**: Construction - documentacao.
 
 ---
+
+## Plano JMeter, skill de caos e correcao da retentativa do SDK
+**Timestamp**: 2026-10-09T19:20:00Z
+**User Input**: "os documentos estão todos atualizados, o reame, com as jornadas e tudo mais?" / "avalie a nova skill chaos-engineering e veja se estamos OK com ela." / "tenho o jmter na maquina, vamos cria um plano de teste. auste o arquivo que esta em C:\Developer\jMetter\consignado" / "o que esta contecendo aqui?" / "sempre em pt-br"
+**AI Response**: Docs atualizados (README 356 testes e estado; ingestion-api README com pool e JVM; melhoria-proposta M2 com a janela de corrida; aidlc-state). WorkerEndToEndTest passou a verificar chamadas recebidas pelo legado por chave. local-env ganhou logback.xml (DEBUG gerava 73 MB em 3 min); local-up espera 180 s. Plano JMeter reescrito (setUp de tokens por parceiro, fumaca, carga com vazao constante, tempestade de duplicatas, veredito) + gera-proposta.groovy + LEIA-ME.md; JMeter precisa rodar em JDK 21 (Groovy 3 nao le Java 25). Bug achado pelo JMeter e corrigido: retentativa interna do SDK apos timeout reportava DUPLICATE_ACCEPTED para proposta nova (DynamoDbInboxAdapter compara o tracingId). Tempestade de 200 disparos da mesma chave: nenhuma duplicidade, mas 151 x 503 e 19 timeouts no DynamoDB Local (item quente).
+**Context**: Construction - Build and Test (carga) e resiliencia.
+
+---
+
+## Cache de chaves recentes na borda (sem testes)
+**Timestamp**: 2026-10-09T19:40:00Z
+**User Input**: "acho que é mais elegante um um cache curto de chaves recentes na borda, o que vc acha?" / "da para usar deduplicação nas sqs, também" / "qual é a sua sugestão?" / "um cache curto de chaves recentes na borda; uma cota por chave; aceitar o limite como característica do emulador e medir na AWS." / "combinado, mas sem os testes, pq vou fazer uma entrevista as 16:25" / "esse chace seria um redis?" / "e o que acha de subir um modulo de cache?" / "ok"
+**AI Response**: SQS FIFO rejeitada por agora (dedup atua depois do DynamoDB, janela de 5 min, custo de migracao). Cota por chave rejeitada (responde 429 e estimula reenvio). Implementado CoalescingInboxAdapter na ingestion-api: coalescencia por parceiro+chave e memoria curta (60 s, 100 mil entradas, 0 desliga), so guarda sucesso, DynamoDB segue como verdade; em memoria por instancia (nao Redis); sem modulo separado por ora. Compila. SEM TESTES por pedido do usuario: pendente teste de concorrencia, gate de cobertura pode falhar no mvn verify, tempestade no JMeter a repetir.
+**Context**: Construction U3 - resiliencia.
+
+---

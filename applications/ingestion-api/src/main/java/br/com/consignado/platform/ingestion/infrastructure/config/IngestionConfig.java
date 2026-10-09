@@ -10,6 +10,7 @@ import br.com.consignado.platform.ingestion.application.port.out.TracingIdPort;
 import br.com.consignado.platform.ingestion.application.usecase.AcceptProposalService;
 import br.com.consignado.platform.ingestion.infrastructure.adapter.in.web.MeteredAcceptProposalUseCase;
 import br.com.consignado.platform.ingestion.infrastructure.adapter.out.crypto.EnvelopePayloadProtectionAdapter;
+import br.com.consignado.platform.ingestion.infrastructure.adapter.out.persistence.CoalescingInboxAdapter;
 import br.com.consignado.platform.ingestion.infrastructure.adapter.out.persistence.DynamoDbInboxAdapter;
 import br.com.consignado.platform.ingestion.infrastructure.adapter.out.persistence.InMemoryInboxAdapter;
 import br.com.consignado.platform.ingestion.infrastructure.adapter.out.quota.Resilience4jTenantQuotaAdapter;
@@ -82,7 +83,19 @@ public class IngestionConfig {
       havingValue = "dynamodb",
       matchIfMissing = true)
   DurableInboxPort dynamoDbInbox(DynamoDbClient dynamoDbClient, IngestionProperties properties) {
-    return new DynamoDbInboxAdapter(dynamoDbClient, properties.inbox().tableName());
+    IngestionProperties.Inbox inbox = properties.inbox();
+    DurableInboxPort dynamo = new DynamoDbInboxAdapter(dynamoDbClient, inbox.tableName());
+    if (inbox.recentKeysMaxEntries() == 0) {
+      return dynamo;
+    }
+    // Tempestade de duplicatas: uma escrita por chave por instancia; quem espera, espera no maximo
+    // o mesmo prazo da chamada ao DynamoDB
+    return new CoalescingInboxAdapter(
+        dynamo,
+        inbox.recentKeysTtl(),
+        inbox.apiCallTimeout(),
+        inbox.recentKeysMaxEntries(),
+        System::nanoTime);
   }
 
   @Bean
