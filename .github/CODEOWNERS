@@ -1,0 +1,11 @@
+# Copie para .github/CODEOWNERS de cada repositório-alvo e ative
+# "Require review from Code Owners" no ruleset do branch principal.
+#
+# Arquivos que controlam CI e assistentes de IA precisam de aprovação da plataforma:
+# eles definem como o código é verificado e gerado (política GOV-SELF-001).
+/.github/            @robertosrjr
+/.claude/            @robertosrjr
+/CLAUDE.md           @robertosrjr
+/AGENTS.md           @robertosrjr
+/.mcp.json           @robertosrjr
+/.cursor/            @robertosrjr
