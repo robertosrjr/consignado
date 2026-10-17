@@ -25,6 +25,8 @@ scrape_configs:
   # que são usados nas regras de alerta.
   - job_name: pushgateway
     honor_labels: true
+    # Protobuf evita truncamento de GAUGE_HISTOGRAM no formato texto do Pushgateway.
+    scrape_protocols: [PrometheusProto]
     static_configs:
       - targets: ["pushgateway:9091"]
 

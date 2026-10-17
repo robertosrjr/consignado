@@ -1,208 +1,54 @@
-# OpenTelemetry / Jaeger - Troubleshooting Guide
+﻿# Diagnóstico de tracing: OpenTelemetry e Jaeger
 
-## ❌ Erro: "Failed to publish metrics to OTLP receiver - java.net.ConnectException"
+Revisão: 16/10/2026. O Jaeger está configurado para receber traces; a jornada distribuída da aplicação ainda não foi instrumentada e comprovada. Este guia descreve verificações, não evidência de uma funcionalidade pronta.
 
-### Causa
-A aplicação não consegue conectar ao Jaeger no endpoint OTLP.
+## Estado atual
 
-### Solução
+- O starter define uma probabilidade de sampling, mas isso não instala um SDK, bridge ou exporter.
+- `SystemTracingIdAdapter` reutiliza o MDC quando disponível; caso contrário, gera UUID. Esse identificador não cria um span.
+- O dispatcher envia `tracingId` no SQS. O worker não restaura contexto W3C a partir desse atributo.
+- O cliente HTTP do legado não injeta `traceparent`/`tracestate`.
+- Ter constantes para esses headers ou ver serviços de teste no Jaeger não comprova propagação ponta a ponta.
 
-#### 1. Verificar se Jaeger está rodando
-```bash
-# Na instância EC2
-docker ps | grep jaeger
+## Verificar o backend
+
+Na EC2:
+
+```sh
+cd /home/ubuntu/observability
+docker compose -f compose.sem-elasticsearch.yaml ps
+docker logs --tail 100 jaeger
+curl -fsS http://127.0.0.1:16686/api/services
 ```
 
-Saída esperada:
-```
-jaegertracing/jaeger:2.10.0    Up 45 minutes    0.0.0.0:4317-4318->4317-4318/tcp
-```
+A interface fica em `http://<IP_PUBLICO_ATUAL>:16686`. Consultar o IP atual da EC2; não reutilizar endereços de execuções antigas. Uma lista de serviços vazia pode ser esperada após limpeza ou sem spans recentes.
 
-#### 2. Verificar URL do endpoint
-**ERRADO** (localhost - só funciona se app estiver no mesmo container):
-```yaml
-endpoint: http://localhost:4318/v1/traces
-```
+O receiver configurado oferece OTLP gRPC em 4317 e OTLP HTTP em 4318. Para OTLP HTTP de traces, o caminho é `/v1/traces`; `/v1/metrics` pertence a outro sinal. Um GET em `/v1/traces` não é teste válido de exportação: um erro HTTP pode mostrar que há um servidor respondendo, mas não prova ingestão de spans.
 
-**CORRETO** (endpoint público da instância EC2):
-```yaml
-endpoint: http://ec2-54-232-1-143.sa-east-1.compute.amazonaws.com:4318/v1/traces
-```
+`localhost` aponta para o namespace do processo que envia. É válido no mesmo host quando a porta está publicada; dentro de containers diferentes, normalmente deve ser usado o nome do serviço/rede apropriado. Para emissão pela estação local, usar o endereço alcançável da EC2 ou um túnel SSH. Restringir o acesso de rede aos emissores necessários.
 
-#### 3. Testar conectividade
-```bash
-# Do seu PC local
-curl -i http://ec2-54-232-1-143.sa-east-1.compute.amazonaws.com:4318/v1/traces
+## Instrumentar antes de diagnosticar exportação
 
-# Resposta esperada: 415 Unsupported Media Type (está funcionando!)
-```
+Escolher uma estratégia compatível de instrumentação: agente OpenTelemetry ou integração SDK/bridge na aplicação. Não combinar mecanismos que gerem spans duplicados para a mesma operação. Acrescentar apenas `opentelemetry-exporter-otlp` não garante autoconfiguração completa.
 
-#### 4. Verificar se a porta está aberta na AWS
-- **Security Group** da instância EC2 deve permitir entrada na porta **4318**
-- Protocolo: **TCP**
-- Source: Seu IP ou 0.0.0.0/0 (menos seguro)
+Preservar contexto de tracing na gravação da Inbox, na leitura do Stream e no envio SQS; extrair e ativar contexto por mensagem no worker, incluindo seus executores. Propagar contexto na chamada HTTP ao legado. Modelar relações pai/filho ou links conforme a semântica assíncrona e os lotes; não manter um span HTTP aberto durante toda a espera em fila.
 
----
+Não colocar CPF, payload, token ou segredo em atributos, eventos ou baggage. O mascaramento do JSON de logs não protege automaticamente spans exportados.
 
-## ❌ Erro: "WARN - Tracing not available in Spring"
+## Critério de conclusão
 
-### Causa
-Dependência OTLP exporter não está no classpath.
+1. Emitir uma proposta controlada e identificar seu trace ou os traces relacionados por links.
+2. Conferir API, passagem assíncrona, processamento do worker e chamada ao legado.
+3. Verificar IDs, relacionamentos, duração, atributos e correlação dos logs com o contexto ativo.
+4. Repetir com retentativa e duplicidade; cada tentativa precisa manter identidade e causalidade corretas.
+5. Verificar falhas técnicas separadamente de rejeições de negócio esperadas.
 
-### Solução
-Confirme que o `pom.xml` tem:
-```xml
-<dependency>
-    <groupId>io.opentelemetry</groupId>
-    <artifactId>opentelemetry-exporter-otlp</artifactId>
-</dependency>
-```
+## Referências
 
-Depois:
-```bash
-mvn clean install
-```
+- [Conceitos de traces](https://opentelemetry.io/docs/concepts/signals/traces/).
+- [Propagação de contexto](https://opentelemetry.io/docs/concepts/context-propagation/).
+- [Convenções de spans de mensageria](https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/).
 
----
+## Obstáculos e pendências
 
-## ⚠️ Aviso: "WARN - Sending metrics instead of traces to OTLP"
-
-### Causa
-Você configurou o endpoint para `/v1/metrics` (métricas) em vez de `/v1/traces` (traces).
-
-### Solução
-Mude em `application.yml`:
-```yaml
-# ❌ ERRADO
-endpoint: http://localhost:4318/v1/metrics
-
-# ✅ CORRETO
-endpoint: http://localhost:4318/v1/traces
-```
-
----
-
-## 🔍 Verificar se Traces estão chegando no Jaeger
-
-### 1. Abrir Jaeger UI
-```
-http://ec2-54-232-1-143.sa-east-1.compute.amazonaws.com:16686
-```
-
-### 2. Selecionar serviço
-- Dropdown **Service**: escolha `pedidos-api`
-- Clique em **Find Traces**
-
-### 3. Se não aparecer nada
-- **Faça requisições** na aplicação para gerar spans
-- **Aguarde 15-30 segundos** (Jaeger pode levar para processar)
-- **Clique em Refresh** (F5)
-
----
-
-## 🧪 Teste Completo (Checklist)
-
-- [ ] Jaeger está rodando: `docker compose ps | grep jaeger`
-- [ ] Porta 4318 está aberta: `curl -i http://ec2-...:4318/v1/traces`
-- [ ] URL em `application.yml` está correta
-- [ ] Aplicação foi reiniciada após mudança no YAML
-- [ ] Requisições foram feitas para gerar spans
-- [ ] No log, não há `ConnectException`
-- [ ] Spans aparecem em `http://localhost:16686`
-
----
-
-## 🔧 Configurações Alternativas
-
-### Se Jaeger estiver em um Docker Compose local
-
-```yaml
-# docker-compose.yaml
-services:
-  app:
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
-```
-
-### Se Jaeger estiver em outra rede/datacenter
-
-```yaml
-endpoint: http://jaeger-prod.example.com:4318/v1/traces
-```
-
-### Se Jaeger usar autenticação
-
-```yaml
-export:
-  otlp:
-    enabled: true
-    endpoint: http://jaeger:4318/v1/traces
-    headers:
-      Authorization: "Bearer YOUR_TOKEN_HERE"
-```
-
----
-
-## 📊 Validar no Prometheus também
-
-Se você está usando **métricas** (não apenas traces):
-
-```bash
-# Verificar se Prometheus está coletando
-curl http://localhost:9090/api/v1/targets
-```
-
-Procure por `pedidos-api` em "up" status ✅
-
----
-
-## 🐛 Debug: Aumentar verbosidade de logs
-
-Em `application.yml`:
-```yaml
-logging:
-  level:
-    io.opentelemetry: DEBUG  # Verbose OTel logs
-    io.opentelemetry.exporter.otlp: DEBUG
-```
-
-Isso vai mostrar o que está acontecendo com a exportação.
-
----
-
-## 📈 Monitorar Saúde do Tracing
-
-Endpoint de health:
-```bash
-curl http://localhost:8080/actuator/health/tracing
-```
-
-Se tiver `TracingHealthIndicator`:
-```json
-{
-  "status": "UP",
-  "tracing_sdk": "OpenTelemetrySdk",
-  "status": "ACTIVE"
-}
-```
-
----
-
-## 🆘 Ainda não funciona?
-
-1. Verifique logs da aplicação: `docker logs pedidos-app | grep OTLP`
-2. Verifique logs do Jaeger: `docker logs jaeger | grep -i error`
-3. Teste a conectividade diretamente: `nc -zv ec2-54-232-1-143.sa-east-1.compute.amazonaws.com 4318`
-
-Se nada funcionar, use só **Prometheus** por enquanto (OTLP é opcional).
-
----
-
-## ✅ Tudo funcionando!
-
-Quando conseguir conectar, você verá:
-```
-2026-09-22 20:00:00 [otlp-span-exporter-0] INFO ... - Successfully exported 15 spans to Jaeger
-```
-
-Aí é só abrir http://localhost:16686 e ver seus traces em tempo real! 🎉
+A instrumentação foi adiada a pedido do usuário; esta revisão não altera a aplicação nem liga a EC2. Faltam exportação, contexto entre fronteiras e teste da jornada completa. O Jaeger ter uma porta aberta não atende esses critérios.

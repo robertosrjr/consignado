@@ -74,7 +74,7 @@ public final class DynamoDbInboxAdapter implements DurableInboxPort {
     return InboxWriteResult.alreadyExists(tracingId, createdAt);
   }
 
-  private static Map<String, AttributeValue> toAttributes(InboxItem item) {
+  static Map<String, AttributeValue> toAttributes(InboxItem item) {
     Map<String, AttributeValue> attributes = new HashMap<>();
     attributes.put(InboxAttributes.IDEMPOTENCY_KEY, s(item.idempotencyKey().toString()));
     attributes.put(InboxAttributes.TENANT_ID, s(item.tenant().value()));

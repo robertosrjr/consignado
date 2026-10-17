@@ -14,4 +14,16 @@ public record AcceptProposalCommand(
     ConvenioType convenio,
     boolean portability,
     Money amount,
-    int installments) {}
+    int installments,
+    java.time.LocalDate contractDate) {
+  public AcceptProposalCommand(
+      IdempotencyKey key,
+      TenantId tenant,
+      Cpf cpf,
+      ConvenioType convenio,
+      boolean portability,
+      Money amount,
+      int installments) {
+    this(key, tenant, cpf, convenio, portability, amount, installments, null);
+  }
+}

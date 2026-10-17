@@ -53,6 +53,11 @@
       <artifactId>micrometer-registry-prometheus</artifactId>
     </dependency>
     <dependency>
+      <!-- Envio ao Pushgateway (desligado por padrao; ver platform-starter) -->
+      <groupId>io.prometheus</groupId>
+      <artifactId>prometheus-metrics-exporter-pushgateway</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
     </dependency>
@@ -160,11 +165,21 @@
           </plugin>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <systemPropertyVariables>
+                <logging.config>classpath:logback-integration.xml</logging.config>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
             <configuration>
               <!-- o jar reempacotado pelo Spring Boot guarda as classes em BOOT-INF; usa target/classes -->
               <classesDirectory>${project.build.outputDirectory}</classesDirectory>
               <systemPropertyVariables>
+                <logging.config>classpath:logback-integration.xml</logging.config>
                 <sqlite4java.library.path>${project.basedir}/../local-env/target/native-libs</sqlite4java.library.path>
               </systemPropertyVariables>
             </configuration>

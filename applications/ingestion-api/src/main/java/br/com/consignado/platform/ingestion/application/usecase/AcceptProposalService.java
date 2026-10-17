@@ -28,6 +28,8 @@ public class AcceptProposalService implements AcceptProposalUseCase {
   private final ClockPort clock;
   private final TracingIdPort tracing;
   private final Duration retention;
+  private final br.com.consignado.platform.ingestion.application.port.out.BusinessFingerprintPort
+      fingerprints;
 
   public AcceptProposalService(
       TenantQuotaPort quota,
@@ -36,12 +38,25 @@ public class AcceptProposalService implements AcceptProposalUseCase {
       ClockPort clock,
       TracingIdPort tracing,
       Duration retention) {
+    this(quota, protection, inbox, clock, tracing, retention, null);
+  }
+
+  public AcceptProposalService(
+      TenantQuotaPort quota,
+      PayloadProtectionPort protection,
+      DurableInboxPort inbox,
+      ClockPort clock,
+      TracingIdPort tracing,
+      Duration retention,
+      br.com.consignado.platform.ingestion.application.port.out.BusinessFingerprintPort
+          fingerprints) {
     this.quota = quota;
     this.protection = protection;
     this.inbox = inbox;
     this.clock = clock;
     this.tracing = tracing;
     this.retention = retention;
+    this.fingerprints = fingerprints;
   }
 
   @Override
@@ -71,11 +86,20 @@ public class AcceptProposalService implements AcceptProposalUseCase {
                 protectedPayload,
                 now.toEpochMilli(),
                 now.plus(retention).getEpochSecond(),
-                tracingId));
+                tracingId,
+                fingerprints == null
+                    ? null
+                    : fingerprints.generate(
+                        command, now.atOffset(java.time.ZoneOffset.UTC).toLocalDate())));
 
     if (written.created()) {
       return new AcceptProposalResult(
-          IngestionOutcome.RECEIVED, command.idempotencyKey(), tracingId, now);
+          IngestionOutcome.RECEIVED,
+          command.idempotencyKey(),
+          tracingId,
+          now,
+          written.proposalId(),
+          false);
     }
     String originalTracingId =
         written.existingTracingId() != null ? written.existingTracingId() : tracingId;
@@ -87,6 +111,8 @@ public class AcceptProposalService implements AcceptProposalUseCase {
         IngestionOutcome.DUPLICATE_ACCEPTED,
         command.idempotencyKey(),
         originalTracingId,
-        originalReceivedAt);
+        originalReceivedAt,
+        written.proposalId(),
+        written.semanticDuplicate());
   }
 }

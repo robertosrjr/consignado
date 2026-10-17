@@ -1,0 +1,42 @@
+{
+  "receiver": "consignado-sns",
+  "status": "firing",
+  "groupLabels": {
+    "alertname": "ConsignadoTest"
+  },
+  "commonLabels": {
+    "notification": "sre"
+  },
+  "commonAnnotations": {},
+  "externalURL": "http://localhost:9093",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "ConsignadoTest",
+        "service": "worker",
+        "instance": "test"
+      },
+      "annotations": {
+        "description": "Acentuação, \"aspas\", barra \\ e controles:\n\t\u0001\u0007\u000b"
+      },
+      "startsAt": "2026-10-16T17:00:00Z",
+      "endsAt": "2026-10-16T17:05:00Z",
+      "generatorURL": "http://localhost:9090/alerts",
+      "fingerprint": "test-firing"
+    },
+    {
+      "status": "resolved",
+      "labels": {
+        "alertname": "ConsignadoTest"
+      },
+      "annotations": {
+        "summary": "Recuperação"
+      },
+      "startsAt": "2026-10-16T17:00:00Z",
+      "endsAt": "2026-10-16T17:01:00Z",
+      "generatorURL": "",
+      "fingerprint": "test-resolved"
+    }
+  ]
+}

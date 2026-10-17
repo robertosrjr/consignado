@@ -6,7 +6,7 @@ Drena as filas no ritmo que o legado suporta. É o componente que **protege o Co
 
 1. Nunca passa de **180 chamadas por segundo** ao legado, somando todas as instâncias.
 2. Respeita o QoS: piso de **70% para a fast lane** e 30% para a standard, com empréstimo quando uma está vazia.
-3. Nenhuma proposta é averbada duas vezes, mesmo com reentrega de mensagem ou queda no meio do processamento.
+3. Reentregas com estado terminal conhecido não chamam novamente o legado. A garantia entre reinícios e réplicas depende de persistência durável e do contrato idempotente do legado; ambos ainda têm limitações nesta PoC.
 
 ## Orçamento de vazão
 
@@ -38,7 +38,7 @@ stateDiagram-v2
 
 `CONFIRMED` e `FAILED` são absorventes: uma proposta em estado final **nunca** volta a chamar o legado. Se a mensagem for reentregue, o Worker vê o estado final e apenas confirma a mensagem. Como a chamada ao legado usa a mesma `Idempotency-Key`, mesmo um reenvio devolve o resultado original em vez de averbar de novo.
 
-A gravação de estado e de eventos é atômica, o que dá o rastro completo (outbox) sem transação distribuída.
+Estado e eventos são atualizados no repositório em memória. Isso não constitui uma outbox durável: os dados se perdem ao reiniciar e não há exclusão mútua entre réplicas. Consulte a [auditoria de idempotência](../../docs/auditoria-idempotencia.md).
 
 ## Resiliência
 
@@ -95,7 +95,7 @@ As variáveis obrigatórias precisam estar no ambiente; o `scripts/local-up.ps1`
 ## Testes
 
 ```bash
-mvn -pl worker test   # 129 testes
+mvn -pl worker test   # consultar contagem e resultado nos relatórios da execução
 ```
 
 Dois merecem destaque: `BudgetSimulationTest` prova que nenhuma janela de 1 s passa de 180 e que a proporção fica perto de 70/30; `WorkerEndToEndTest` processa 400 propostas com duplicatas, uma falha transitória e uma mensagem órfã, verificando que cada chave é averbada exatamente uma vez.

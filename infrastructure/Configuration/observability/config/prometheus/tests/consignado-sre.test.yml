@@ -1,0 +1,1424 @@
+{
+  "rule_files": [
+    "../rules/consignado-sre.yml"
+  ],
+  "evaluation_interval": "1m",
+  "tests": [
+    {
+      "name": "Saudavel e ocioso: nao alertar sem trafego",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"test\",lane=\"fast\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "worker_processing_rate{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "2+0x40"
+        },
+        {
+          "series": "effective_drain_time_seconds{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "0+0x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "20m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "20m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "20m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "20m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "20m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "20m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "20m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Scrape indisponivel apos persistencia",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Scrape transitorio nao pagina",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "0 1+0x39"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "1m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "1m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "1m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "1m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "1m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "1m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "1m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Push antigo dispara mesmo com gateway UP",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "4m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "4m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "4m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "4m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "4m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "4m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "4m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Servico nunca enviou metricas",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Worker parado com fila",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"test\",lane=\"fast\"}",
+          "values": "10+0x40"
+        },
+        {
+          "series": "worker_processing_rate{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "0+0x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Worker sem fila nao dispara",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"test\",lane=\"fast\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "worker_processing_rate{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "0+0x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Amostras congeladas do worker nao causam alerta de negocio",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"test\",lane=\"fast\"}",
+          "values": "10+0x40"
+        },
+        {
+          "series": "worker_processing_rate{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "0+0x40"
+        },
+        {
+          "series": "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "0+0x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Legado aberto com fila",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"test\",lane=\"fast\"}",
+          "values": "10+0x40"
+        },
+        {
+          "series": "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "2+0x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "2m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Meio aberto nao e aberto",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"test\",lane=\"fast\"}",
+          "values": "10+0x40"
+        },
+        {
+          "series": "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "1+0x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "5m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Drenagem lenta sustentada",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"test\",lane=\"fast\"}",
+          "values": "100+0x40"
+        },
+        {
+          "series": "effective_drain_time_seconds{env=\"local\",service=\"worker\",instance=\"test\"}",
+          "values": "600+0x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5xx alto com trafego",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "http_server_requests_seconds_count{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",status=\"202\"}",
+          "values": "0+48x40"
+        },
+        {
+          "series": "http_server_requests_seconds_count{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",status=\"503\"}",
+          "values": "0+12x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "10m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pouco trafego nao pagina por percentual",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "http_server_requests_seconds_count{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",status=\"202\"}",
+          "values": "0+1x40"
+        },
+        {
+          "series": "http_server_requests_seconds_count{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",status=\"503\"}",
+          "values": "0+1x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "p95 alto com volume e persistencia",
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
+          "values": "1+0x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "http_server_requests_seconds_bucket{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",le=\"0.5\"}",
+          "values": "0+30x40"
+        },
+        {
+          "series": "http_server_requests_seconds_bucket{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",le=\"1.0\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "http_server_requests_seconds_bucket{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",le=\"+Inf\"}",
+          "values": "0+60x40"
+        },
+        {
+          "series": "http_server_requests_seconds_count{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",status=\"202\"}",
+          "values": "0+60x40"
+        }
+      ],
+      "promql_expr_test": [
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+          "eval_time": "15m",
+          "exp_samples": [
+            {
+              "labels": "{}",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

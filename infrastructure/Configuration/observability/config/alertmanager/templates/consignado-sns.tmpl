@@ -1,0 +1,20 @@
+{{ define "consignado.jsonquote" }}{{ printf "%q" . | reReplaceAll "\\\\x([0-9a-fA-F]{2})" "\\u00${1}" | reReplaceAll "\\\\a" "\\u0007" | reReplaceAll "\\\\v" "\\u000b" }}{{ end }}
+{{ define "consignado.sns.message" }}
+{
+  "schemaVersion": "1",
+  "receiver": {{ template "consignado.jsonquote" .Receiver }},
+  "status": {{ template "consignado.jsonquote" .Status }},
+  "groupLabels": { {{ range $i, $pair := .GroupLabels.SortedPairs }}{{ if $i }},{{ end }}{{ template "consignado.jsonquote" $pair.Name }}: {{ template "consignado.jsonquote" $pair.Value }}{{ end }} },
+  "alerts": [{{ range $i, $alert := .Alerts }}{{ if $i }},{{ end }}
+    {
+      "status": {{ template "consignado.jsonquote" $alert.Status }},
+      "fingerprint": {{ template "consignado.jsonquote" $alert.Fingerprint }},
+      "startsAt": {{ template "consignado.jsonquote" ($alert.StartsAt.Format "2006-01-02T15:04:05.999999999Z07:00") }},
+      "endsAt": {{ template "consignado.jsonquote" ($alert.EndsAt.Format "2006-01-02T15:04:05.999999999Z07:00") }},
+      "generatorURL": {{ template "consignado.jsonquote" $alert.GeneratorURL }},
+      "labels": { {{ range $j, $pair := $alert.Labels.SortedPairs }}{{ if $j }},{{ end }}{{ template "consignado.jsonquote" $pair.Name }}: {{ template "consignado.jsonquote" $pair.Value }}{{ end }} },
+      "annotations": { {{ range $j, $pair := $alert.Annotations.SortedPairs }}{{ if $j }},{{ end }}{{ template "consignado.jsonquote" $pair.Name }}: {{ template "consignado.jsonquote" $pair.Value }}{{ end }} }
+    }{{ end }}
+  ]
+}
+{{ end }}

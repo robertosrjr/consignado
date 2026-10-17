@@ -8,18 +8,34 @@ global:
 route:
   # Receiver padrão: descarta tudo que não casar com uma rota filha.
   receiver: blackhole
-  group_by: [application, alertname, uri]
-  group_wait: 10s
-  group_interval: 1m
-  repeat_interval: 1h
+  group_by: [alertname, env, service, job]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
 
   routes:
+    - receiver: consignado-sns
+      matchers: ['notification="sre"']
+      routes:
+        - receiver: consignado-sns
+          matchers: ['severity="critical"']
+          repeat_interval: 1h
     # Somente alertas marcados para self-healing acionam o orquestrador.
     - receiver: langgraph-orchestrator
       matchers:
         - action = "trigger_agentic_loop"
 
 receivers:
+  # Credenciais temporarias pelo Instance Profile; nunca gravar access_key/secret_key.
+  - name: consignado-sns
+    sns_configs:
+      - topic_arn: arn:aws:sns:sa-east-1:247755251743:alert-consignado
+        sigv4:
+          region: sa-east-1
+        send_resolved: true
+        subject: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        # JSON estruturado com status, labels, annotations, horarios e fingerprints.
+        message: '{{ template "consignado.sns.message" . }}'
   # Orquestrador de IA (AWS Lambda Function URL).
   - name: langgraph-orchestrator
     webhook_configs:
@@ -37,6 +53,18 @@ receivers:
 
 # Não notifica alertas warning se já houver um critical para o mesmo alvo.
 inhibit_rules:
-  - source_matchers: [severity = "critical"]
-    target_matchers: [severity = "warning"]
-    equal: [application, alertname]
+  - source_matchers: ['alertname="ConsignadoIngestionErrors"']
+    target_matchers: ['alertname="ConsignadoIngestionLatency"']
+    equal: [env, service, instance]
+  - source_matchers: ['alertname="ConsignadoLegacyUnavailable"']
+    target_matchers: ['alertname=~"ConsignadoWorkerStalled|ConsignadoBacklogDelayed"']
+    equal: [env, service, instance]
+  - source_matchers: ['alertname="ConsignadoWorkerStalled"']
+    target_matchers: ['alertname="ConsignadoBacklogDelayed"']
+    equal: [env, service, instance]
+  - source_matchers: ['severity="critical"', 'action="trigger_agentic_loop"']
+    target_matchers: ['severity="warning"', 'action="trigger_agentic_loop"']
+    equal: [application, alertname, instance]
+
+templates:
+  - /etc/alertmanager/templates/*.tmpl

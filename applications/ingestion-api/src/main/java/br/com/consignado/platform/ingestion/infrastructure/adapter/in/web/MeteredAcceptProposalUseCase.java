@@ -66,10 +66,21 @@ public final class MeteredAcceptProposalUseCase implements AcceptProposalUseCase
     try {
       AcceptProposalResult result = delegate.accept(command);
       accepted.get(result.outcome()).increment();
+      if (result.outcome() == IngestionOutcome.DUPLICATE_ACCEPTED) {
+        registry
+            .counter(
+                "ingestion.deduplicated",
+                "kind",
+                result.semanticDuplicate() ? "semantic" : "technical")
+            .increment();
+      }
       if (result.outcome() == IngestionOutcome.RECEIVED) {
         recordBusiness(command);
       }
       return result;
+    } catch (br.com.consignado.platform.ingestion.domain.IdempotencyMismatchException mismatch) {
+      registry.counter("ingestion.idempotency.mismatch").increment();
+      throw mismatch;
     } catch (TenantQuotaExceededException quotaExceeded) {
       counterByTenant(throttled, "ingestion.throttled.tenant", command).increment();
       throw quotaExceeded;

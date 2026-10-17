@@ -49,6 +49,9 @@ class ProposalController {
   @ApiResponse(responseCode = "400", description = "Payload ou headers invalidos")
   @ApiResponse(responseCode = "401", description = "Token ausente ou invalido")
   @ApiResponse(responseCode = "403", description = "X-Tenant-ID diferente do tenant do token")
+  @ApiResponse(
+      responseCode = "422",
+      description = "Idempotency-Key reutilizada com conteudo diferente")
   @ApiResponse(responseCode = "429", description = "Cota do parceiro excedida")
   @ApiResponse(responseCode = "503", description = "Armazenamento indisponivel; repita a chamada")
   ResponseEntity<ProposalAcceptedResponse> create(
@@ -73,17 +76,27 @@ class ProposalController {
             request.convenioCode(),
             Boolean.TRUE.equals(request.isPortability()),
             parse("amount", () -> Money.of(request.amount().toPlainString())),
-            request.installments());
+            request.installments(),
+            request.contractDate());
 
     AcceptProposalResult result = useCase.accept(command);
     return ResponseEntity.accepted()
         .header("X-Trace-ID", result.tracingId())
+        .header(
+            "X-Idempotency-Status",
+            result.semanticDuplicate()
+                ? "DUPLICATE_REJECTED"
+                : result.outcome()
+                        == br.com.consignado.platform.ingestion.domain.IngestionOutcome.RECEIVED
+                    ? "NEW"
+                    : "DUPLICATE_ACCEPTED")
         .body(
             new ProposalAcceptedResponse(
                 result.outcome().name(),
                 result.idempotencyKey().toString(),
                 result.tracingId(),
-                result.receivedAt().getEpochSecond()));
+                result.receivedAt().getEpochSecond(),
+                result.proposalId()));
   }
 
   private static <T> T parse(String field, java.util.function.Supplier<T> parser) {

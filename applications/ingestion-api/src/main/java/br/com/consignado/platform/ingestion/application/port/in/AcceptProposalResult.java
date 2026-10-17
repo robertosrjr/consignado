@@ -11,4 +11,11 @@ public record AcceptProposalResult(
     IngestionOutcome outcome,
     IdempotencyKey idempotencyKey,
     String tracingId,
-    Instant receivedAt) {}
+    Instant receivedAt,
+    String proposalId,
+    boolean semanticDuplicate) {
+  public AcceptProposalResult(
+      IngestionOutcome outcome, IdempotencyKey key, String trace, Instant at) {
+    this(outcome, key, trace, at, null, false);
+  }
+}

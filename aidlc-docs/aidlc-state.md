@@ -36,7 +36,7 @@
   - [ ] U4 dispatcher-lambda: codigo COMPLETO e verde (score de prioridade, roteamento 70/30, EMF no CloudWatch). Aprovacao PENDENTE
   - [ ] U5 worker: codigo COMPLETO e verde (orcamento de vazao com piso 70/30 e emprestimo, circuit breaker, estado/outbox em memoria). Aprovacao PENDENTE
   - [ ] U6 infrastructure-terraform: ADIADO por decisao do usuario; o usuario esta montando `infrastructure/` por conta propria (nao alterar)
-  - [ ] U7 load-tests-and-dashboards: PARCIAL. Fonte CloudWatch provisionada no Grafana + politica IAM + mapa de metricas. Faltam: paineis JSON, scripts k6, regras de alerta definitivas
+  - [ ] U7 load-tests-and-dashboards: PARCIAL. Fonte CloudWatch provisionada no Grafana + politica IAM + mapa de metricas. 2026-10-16: 3 paineis JSON (applications/observability/grafana/dashboards) provisionados no Grafana do EC2; envio ao Pushgateway (falha fechada, `local-up.ps1 -PushgatewayAddress`). Faltam: rodada de carga com evidencia, regras de alerta definitivas (as do EC2 ainda sao de pedidos-api)
 - [ ] Build and Test: PARCIAL. `mvn verify` verde; ITs do ingestion-api rodam com `-Pintegration` (DynamoDB Local embarcado). `scripts/local-up.ps1` concluiu a subida completa em 2026-10-09 e o fluxo foi verificado manualmente. Faltam: ITs do worker e teste de carga com evidencia
 
 ### OPERATIONS PHASE

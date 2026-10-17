@@ -430,3 +430,67 @@
 **Context**: Construction U3 - resiliencia.
 
 ---
+
+## Retomada de sessao e pedido de subida no EC2
+**Timestamp**: 2026-10-16T12:00:00Z
+**User Input**: "onde paramos?" / "eu vou te passar a instancia e a chave para vc subir os componentes no docker do ec2"
+**AI Response**: Resumo do estado (ultima entrada: cache de chaves recentes na borda, sem testes; pendencias de aprovacao e perguntas T/Q). Pedido de subida no EC2 recebido; solicitados host, caminho do .pem (sem colar a chave no chat), usuario SSH e quais componentes subir.
+**Context**: Retomada; Operations/infra - EC2 com Docker (muda a premissa "sem Docker", que valia para a maquina local).
+
+---
+
+## Subida da pilha de observabilidade no EC2
+**Timestamp**: 2026-10-16T14:45:00Z
+**User Input**: "Instancia EC2: ubuntu@54.207.213.93\nChave: C:\Developer\Key\kp-dev-observability-stack.ppk\n\nCom isso em mão, conecte na EC2, vamos configurar os ambientes.\n- docker\n- prometheus\n- pushgateway\n- grafana \n- jaeguer\n\nacreditoq ue vc já tenha as configurações em m~eos" / "eu consegui conectar com o putty"
+**AI Response**: Conexao via plink/pscp com a chave de host fixada (ssh-ed25519 SHA256:ae6EG7rhkNurvV2vupcpeAPdEAFZ2QWSKN1Z1rqgWjg). Instancia: Ubuntu 26.04, 2 vCPU, 3,8 GB, sem swap. Docker 29.9.1 + Compose v5.6.0 instalados pelo repositorio oficial (rotacao de log no daemon). Enviado `infrastructure/Configuration/observability` (compose.sem-elasticsearch.yaml, config/, segredo do Grafana; sem config.txt) para ~/observability; .env a partir do .env.example. Subidos prometheus, pushgateway, alertmanager, jaeger (Badger) e grafana; todos 200, 5 alvos up, OTLP HTTP aceito. Pastas de provisionamento vazias criadas no servidor (dashboards/alerting/plugins). Externamente: 9091 aberta; 4317/4318 fechadas no Security Group; 3000/9090 so por tunel.
+**Context**: Operations - observabilidade no EC2.
+
+---
+
+## Portas OTLP do Jaeger no Security Group
+**Timestamp**: 2026-10-16T14:55:00Z
+**User Input**: "vou abrir as porta do jaeger"
+**AI Response**: Orientado a liberar 4317/4318 TCP so para o IP da aplicacao (ou SG da aplicacao), nao 0.0.0.0/0; UI 16686 continua por tunel. Teste externo sera feito apos a liberacao.
+**Context**: Operations - observabilidade no EC2.
+
+---
+
+## Acesso as telas (9090/3000/9093)
+**Timestamp**: 2026-10-16T15:05:00Z
+**User Input**: "abri as portas" / "não estou conseguindo acessar na minha maquin os endereços\nhttp://54.207.213.93:9090/\nhttp://54.207.213.93:3000/" / "o http://54.207.213.93:9093/ também não estou acessando o painel"
+**AI Response**: 4317/4318 acessiveis de fora; trace de teste 58ff6867c3efa0bfa1eaa5c146b9bed5 gravado no Jaeger. 9090/3000/9093/16686 nao abrem por desenho (BIND_ADDRESS=127.0.0.1). Oferecidas: (A) tunel SSH no PuTTY, recomendado; (B) BIND_ADDRESS=0.0.0.0 + SG so para o IP do usuario. Aguardando escolha.
+**Context**: Operations - observabilidade no EC2.
+
+---
+
+## Telas abertas pelo IP (opcao B)
+**Timestamp**: 2026-10-16T15:15:00Z
+**User Input**: "estou tentando pelo navegador" / escolha: "Abrir pelo IP, só para mim (Recomendado)" / "mas pq que eo jaeguer eum consigo acesar o painel?" / "grafana também tem painel" / "177.133.216.24/32 é meu ip" / "o putty esta aberto"
+**AI Response**: BIND_ADDRESS=0.0.0.0 no .env da EC2; conteineres recriados (3000/9090/9093/16686 em 0.0.0.0). Teste externo: 9093 HTTP 200; 3000, 9090, 16686 bloqueadas no Security Group. Pedido ao usuario liberar essas tres para 177.133.216.24/32.
+**Context**: Operations - observabilidade no EC2.
+
+---
+
+## Envio de metricas do teste de carga local ao Pushgateway
+**Timestamp**: 2026-10-16T15:30:00Z
+**User Input**: "eu vou subir a aplicação localmente para realizar um testes de carga local e enviar os dados para o pushgateway" / "veririque as configurações da aplicação para ver se os endereços estão corretos"
+**AI Response**: Verificado: nenhum servico tem envio ao Pushgateway (sem dependencia prometheus-metrics-exporter-pushgateway, sem propriedades management.prometheus.metrics.export.pushgateway.*); metricas so por scrape em /actuator/prometheus. Sem exportador OTLP (traces nao chegam ao Jaeger). Prometheus da EC2 raspa so o Pushgateway. Proposta de mudanca apresentada; aguardando aprovacao.
+**Context**: Construction U1/U7 - observabilidade.
+
+---
+
+## Pushgateway na aplicacao e paineis do Grafana (U7)
+**Timestamp**: 2026-10-16T15:35:00Z
+**User Input**: "quais são os dados de acesso do grafana?" / "os graficos do grafana já estão configurados?" / "como que sobr a aplicação mesmo?" / "com relação a limitação, não tem problema, vamos pegar as métricas da aplicação java"
+**AI Response**: Skill spring-metrics-skill carregada. Dependencia prometheus-metrics-exporter-pushgateway em mock-legacy, ingestion-api e worker. platform-starter: management.prometheus.metrics.export.pushgateway.* com falha fechada (PLATFORM_PUSHGATEWAY_ENABLED=false), address, job = nome do servico, grouping-key.instance, push-rate 10s, shutdown PUT; 2 testes novos. local-up.ps1 com -PushgatewayAddress. Tres paineis JSON em applications/observability/grafana/dashboards (Saude da Ingestao, Protecao Downstream, Backlog e Drenagem) provisionados no Grafana do EC2. Build: package SUCCESS; platform-starter 36 testes verdes. Prova real: mock-legacy local enviou ao Pushgateway do EC2 (grupo de prova apagado). Nao rodado: mvn verify completo (cache de chaves sem testes pode reprovar cobertura).
+**Context**: Construction U1/U7 - observabilidade.
+
+---
+
+## Diagnostico "No data" e desligamento
+**Timestamp**: 2026-10-16T18:10:00Z
+**User Input**: "grafana não esta recuperando os dados, NO DATA" / "conevte na instancia do ec2" / "pare todos os serviços" / "desligue o docker"
+**AI Response**: Causa do No data: servicos locais subiram sem -PushgatewayAddress (Pushgateway sem nenhum grupo); pilha do EC2 saudavel, 4 paineis (business-overview.json adicionado fora desta sessao). Servicos locais ja estavam parados. No EC2: compose stop (volumes preservados) e docker/containerd parados.
+**Context**: Operations - observabilidade no EC2.
+
+---
