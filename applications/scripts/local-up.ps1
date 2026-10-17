@@ -6,15 +6,23 @@
 .DESCRIPTION
   Pre-requisitos: Java 25 no PATH e o build feito (mvn -B -ntp -DskipTests package).
   Segredos (chave de API do legado e chave AES do payload) sao gerados a cada execucao e ficam em
-  .local\env.json (fora do versionamento). Tudo escuta em 127.0.0.1.
+  nas variaveis dos processos filhos; nao sao persistidos em env.json. Tudo escuta em 127.0.0.1.
 
   Portas: ingestion 8080 | mock-legacy 8081 | worker 8083 | DynamoDB 8000 | SQS 9324 | JWT 8082
+
+.PARAMETER PushgatewayAddress
+  host:porta de um Pushgateway. O ultimo valor utilizado fica em .local\observability.json.
+  Sem parametro explicito, reutiliza esse valor; informe -PushgatewayAddress '' para desligar.
 #>
 [CmdletBinding()]
 param(
     [int]$LegacyCapacityTps = 180,
     # Heap fixo da ingestion-api (Xms = Xmx): sem redimensionamento durante o pico
-    [string]$IngestionHeap = '1g'
+    [string]$IngestionHeap = '1g',
+    [string]$PushgatewayAddress = '',
+    # Emulador local durante startup/compilacao; nao altera os defaults de producao.
+    [string]$DynamoApiCallTimeout = '3s',
+    [string]$DynamoApiCallAttemptTimeout = '1s'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -22,6 +30,12 @@ $root = Split-Path -Parent $PSScriptRoot
 $state = Join-Path $root '.local'
 $logs = Join-Path $state 'logs'
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
+
+$observabilityConfig = Join-Path $state 'observability.json'
+if (-not $PSBoundParameters.ContainsKey('PushgatewayAddress') -and (Test-Path $observabilityConfig)) {
+    $savedObservability = Get-Content $observabilityConfig -Raw | ConvertFrom-Json
+    $PushgatewayAddress = [string]$savedObservability.pushgatewayAddress
+}
 
 if (Test-Path (Join-Path $state 'pids.json')) {
     throw "Ja existe uma execucao registrada em .local\pids.json. Rode scripts\local-down.ps1 antes."
@@ -65,10 +79,22 @@ $awsEnv = @{
     AWS_ENDPOINT_URL_SQS       = $sqsUrl
 }
 
+# Envio ao Pushgateway (desligado se o endereco nao for informado). instance = nome da maquina.
+$pushEnv = @{ PLATFORM_PUSHGATEWAY_ENABLED = 'false' }
+if ($PushgatewayAddress) {
+    $pushEnv = @{
+        PLATFORM_PUSHGATEWAY_ENABLED = 'true'
+        PLATFORM_PUSHGATEWAY_ADDRESS = $PushgatewayAddress
+        PLATFORM_INSTANCE_ID         = $env:COMPUTERNAME.ToLowerInvariant()
+    }
+}
+
 $procs = @{}
 
 function Start-Java {
     param([string]$Name, [string[]]$JavaArgs, [hashtable]$EnvVars)
+    # Same metric family type in every service, including already-built jars.
+    $JavaArgs = @('-Dmanagement.metrics.distribution.percentiles-histogram.http.server.requests=true') + $JavaArgs
     foreach ($key in $EnvVars.Keys) { [Environment]::SetEnvironmentVariable($key, $EnvVars[$key], 'Process') }
     $out = Join-Path $logs "$Name.out.log"
     $err = Join-Path $logs "$Name.err.log"
@@ -100,14 +126,14 @@ try {
     Wait-Port 8082 'Emissor JWT'
 
     # 2) legado simulado
-    Start-Java -Name 'mock-legacy' -EnvVars @{
+    Start-Java -Name 'mock-legacy' -EnvVars ($pushEnv + @{
         SERVER_PORT = '8081'; LEGACY_API_KEY = $legacyApiKey; LEGACY_CAPACITY_TPS = "$LegacyCapacityTps"
         LEGACY_API_DOCS_ENABLED = 'true'
-    } -JavaArgs @('-jar', $jars.legacy)
+    }) -JavaArgs @('-jar', $jars.legacy)
     Wait-Port 8081 'mock-legacy'
 
     # 3) ingestion-api
-    Start-Java -Name 'ingestion-api' -EnvVars ($awsEnv + @{
+    Start-Java -Name 'ingestion-api' -EnvVars ($awsEnv + $pushEnv + @{
         SERVER_PORT = '8080'
         INGESTION_PAYLOAD_LOCAL_KEY = $payloadKey
         INGESTION_JWT_JWK_SET_URI = "$issuer/jwks"
@@ -115,12 +141,14 @@ try {
         INGESTION_JWT_AUDIENCE = 'consignado-ingestion'
         INGESTION_API_DOCS_ENABLED = 'true'
     }) -JavaArgs @(
+        "-Dingestion.inbox.api-call-timeout=$DynamoApiCallTimeout",
+        "-Dingestion.inbox.api-call-attempt-timeout=$DynamoApiCallAttemptTimeout",
         # ZGC geracional (padrao no Java 25 com UseZGC): pausas abaixo de 1 ms para o p95 < 100 ms
         '-XX:+UseZGC', "-Xms$IngestionHeap", "-Xmx$IngestionHeap", '-XX:+AlwaysPreTouch',
         '-jar', $jars.ingestion)
 
     # 4) worker (URLs das filas: as mesmas que o local-env imprime)
-    Start-Java -Name 'worker' -EnvVars ($awsEnv + @{
+    Start-Java -Name 'worker' -EnvVars ($awsEnv + $pushEnv + @{
         SERVER_PORT = '8083'
         WORKER_LEGACY_BASE_URL = 'http://127.0.0.1:8081'
         WORKER_LEGACY_API_KEY = $legacyApiKey
@@ -133,11 +161,14 @@ try {
     Wait-Port 8083 'worker'
 
     $procs | ConvertTo-Json | Set-Content -Path (Join-Path $state 'pids.json') -Encoding utf8
+    @{ pushgatewayAddress = $PushgatewayAddress } | ConvertTo-Json |
+        Set-Content -Path $observabilityConfig -Encoding utf8
     Write-Host ''
     Write-Host 'PoC no ar:'
     Write-Host '  Ingestion API  http://127.0.0.1:8080   Swagger: http://127.0.0.1:8080/swagger-ui.html'
     Write-Host '  Mock legacy    http://127.0.0.1:8081   Swagger: http://127.0.0.1:8081/swagger-ui.html'
     Write-Host '  Worker         http://127.0.0.1:8083/actuator/prometheus'
+    if ($PushgatewayAddress) { Write-Host "  Pushgateway    http://$PushgatewayAddress (envio a cada 10 s)" }
     Write-Host "  Token JWT      $issuer/token?tenant=banco-a"
     Write-Host "  Chave do legado (para o Swagger do mock): $legacyApiKey"
     Write-Host '  Encerrar: scripts\local-down.ps1'
