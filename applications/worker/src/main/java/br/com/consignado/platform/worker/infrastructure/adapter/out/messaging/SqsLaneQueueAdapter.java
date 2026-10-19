@@ -35,8 +35,41 @@ public final class SqsLaneQueueAdapter implements LaneQueuePort, QueueDepthPort,
   private static final int BATCH = 10;
 
   private record SqsMessage(
-      Lane lane, ProposalMessage message, String receiptHandle, int receiveCount)
-      implements QueuedMessage {}
+      Lane lane,
+      ProposalMessage message,
+      String receiptHandle,
+      int receiveCount,
+      java.util.Map<String, String> traceContext)
+      implements QueuedMessage {
+    @Override
+    public void processingFailed(RuntimeException failure) {
+      var span = io.opentelemetry.api.trace.Span.current();
+      span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
+      span.setAttribute("error.type", failure.getClass().getName());
+    }
+
+    @Override
+    public Runnable processingTask(Runnable task) {
+      return () -> {
+        try (var operation =
+            br.com.consignado.platform.telemetry.Telemetry.start(
+                "process proposal",
+                io.opentelemetry.api.trace.SpanKind.CONSUMER,
+                br.com.consignado.platform.telemetry.TraceContext.extract(traceContext))) {
+          operation.span().setAttribute("messaging.system", "aws_sqs");
+          operation.span().setAttribute("messaging.operation.type", "process");
+          operation.span().setAttribute("messaging.destination.name", lane.name());
+          operation.span().setAttribute("messaging.message.receive_count", receiveCount);
+          try {
+            task.run();
+          } catch (RuntimeException e) {
+            operation.failed(e);
+            throw e;
+          }
+        }
+      };
+    }
+  }
 
   private final SqsClient sqs;
   private final String fastQueueUrl;
@@ -119,6 +152,7 @@ public final class SqsLaneQueueAdapter implements LaneQueuePort, QueueDepthPort,
 
   @Override
   public void release(QueuedMessage message, Duration delay) {
+    io.opentelemetry.api.trace.Span.current().addEvent("messaging.retry.scheduled");
     SqsMessage sqsMessage = (SqsMessage) message;
     try {
       sqs.changeMessageVisibility(
@@ -161,6 +195,7 @@ public final class SqsLaneQueueAdapter implements LaneQueuePort, QueueDepthPort,
             sqs.receiveMessage(
                     ReceiveMessageRequest.builder()
                         .queueUrl(url(lane))
+                        .messageAttributeNames("traceparent", "tracestate")
                         .maxNumberOfMessages(BATCH)
                         .waitTimeSeconds(waitSeconds)
                         .visibilityTimeout(visibilityTimeoutSeconds)
@@ -186,13 +221,26 @@ public final class SqsLaneQueueAdapter implements LaneQueuePort, QueueDepthPort,
       ProposalMessage parsed = ProposalMessageCodec.fromJson(message.body());
       String count = message.attributes().get(MessageSystemAttributeName.APPROXIMATE_RECEIVE_COUNT);
       int receiveCount = count == null ? 1 : Integer.parseInt(count);
-      if (!buffer.offer(new SqsMessage(lane, parsed, message.receiptHandle(), receiveCount))) {
+      if (!buffer.offer(
+          new SqsMessage(
+              lane, parsed, message.receiptHandle(), receiveCount, traceContext(message)))) {
         // buffer cheio (nao deveria ocorrer): deixa a mensagem reaparecer
         LOG.log(Level.WARNING, "event=prefetch_buffer_full lane={0}", lane);
       }
     } catch (RuntimeException e) {
       LOG.log(Level.ERROR, "event=poison_message lane={0}", lane);
     }
+  }
+
+  private static java.util.Map<String, String> traceContext(Message message) {
+    java.util.Map<String, String> result = new java.util.HashMap<>();
+    for (String key : List.of("traceparent", "tracestate")) {
+      var value = message.messageAttributes().get(key);
+      if (value != null && value.stringValue() != null) {
+        result.put(key, value.stringValue());
+      }
+    }
+    return java.util.Map.copyOf(result);
   }
 
   private BlockingQueue<SqsMessage> buffer(Lane lane) {

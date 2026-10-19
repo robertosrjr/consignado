@@ -22,6 +22,20 @@ public class InboxStreamHandler implements RequestHandler<DynamodbEvent, Streams
 
   private final BatchDispatcher dispatcher;
   private final EmfMetrics metrics;
+  private boolean runtimeTracing;
+
+  private static class RuntimeTelemetry {
+    static final io.opentelemetry.sdk.OpenTelemetrySdk SDK = initialize();
+
+    private static io.opentelemetry.sdk.OpenTelemetrySdk initialize() {
+      var sdk =
+          br.com.consignado.platform.telemetry.StandaloneTelemetry.create(
+              "dispatcher-lambda", System.getenv());
+      br.com.consignado.platform.telemetry.Telemetry.configure(sdk);
+      Runtime.getRuntime().addShutdownHook(new Thread(sdk::close));
+      return sdk;
+    }
+  }
 
   /** Construtor usado pelo runtime do Lambda: configuracao por variaveis de ambiente. */
   public InboxStreamHandler() {
@@ -29,6 +43,8 @@ public class InboxStreamHandler implements RequestHandler<DynamodbEvent, Streams
         DispatcherConfig.fromEnvironment(System.getenv())
             .batchDispatcher(SqsClient.create(), DynamoDbClient.create()),
         new EmfMetrics(System.out, Clock.systemUTC()));
+    RuntimeTelemetry.SDK.getSdkTracerProvider();
+    runtimeTracing = true;
   }
 
   /** Construtor para testes e para o executor local. */
@@ -39,6 +55,19 @@ public class InboxStreamHandler implements RequestHandler<DynamodbEvent, Streams
 
   @Override
   public StreamsEventResponse handleRequest(DynamodbEvent event, Context context) {
+    try {
+      return dispatch(event);
+    } finally {
+      if (runtimeTracing) {
+        RuntimeTelemetry.SDK
+            .getSdkTracerProvider()
+            .forceFlush()
+            .join(1, java.util.concurrent.TimeUnit.SECONDS);
+      }
+    }
+  }
+
+  private StreamsEventResponse dispatch(DynamodbEvent event) {
     List<StreamRecordView> records =
         event.getRecords().stream().map(StreamRecordMapper::toView).toList();
     BatchResult result = dispatcher.dispatch(records);

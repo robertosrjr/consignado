@@ -56,7 +56,7 @@ A marcação de `DISPATCHED` é condicional: se o registro já foi despachado, n
 
 Emite **EMF** (CloudWatch Embedded Metric Format) em stdout, no namespace `ConsignadoPoc/Dispatcher`: `RecordsDispatched` por `Lane`, `RecordsSkipped` e `RecordsFailed`. Uma linha JSON no log vira métrica sem chamada de API, o que evita latência e custo de `PutMetricData` no caminho do evento.
 
-Essas métricas **não aparecem no Prometheus** — vêm do CloudWatch, que está configurado como fonte de dados no Grafana.
+Essas métricas **não aparecem no Prometheus** — dependem da coleta de logs pelo CloudWatch na execução AWS. Há datasource CloudWatch versionado; sua operação no ambiente ativo precisa de validação. EMF em stdout local não publica automaticamente no CloudWatch.
 
 ## Pacote
 

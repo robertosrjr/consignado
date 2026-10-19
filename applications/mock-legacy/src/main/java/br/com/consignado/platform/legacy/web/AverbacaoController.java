@@ -1,8 +1,8 @@
 package br.com.consignado.platform.legacy.web;
 
 import br.com.consignado.platform.legacy.capacity.CapacityGate;
+import br.com.consignado.platform.legacy.config.LegacyFaultPolicy;
 import br.com.consignado.platform.legacy.config.LegacyMetrics;
-import br.com.consignado.platform.legacy.config.LegacyProperties;
 import br.com.consignado.platform.legacy.ledger.AverbacaoLedger;
 import io.micrometer.core.instrument.Timer;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,17 +38,17 @@ class AverbacaoController {
 
   private final CapacityGate gate;
   private final AverbacaoLedger ledger;
-  private final LegacyProperties properties;
+  private final LegacyFaultPolicy faultPolicy;
   private final LegacyMetrics metrics;
 
   AverbacaoController(
       CapacityGate gate,
       AverbacaoLedger ledger,
-      LegacyProperties properties,
+      LegacyFaultPolicy faultPolicy,
       LegacyMetrics metrics) {
     this.gate = gate;
     this.ledger = ledger;
-    this.properties = properties;
+    this.faultPolicy = faultPolicy;
     this.metrics = metrics;
   }
 
@@ -98,7 +98,7 @@ class AverbacaoController {
 
   /** Aplica latencia e taxa de erro configuradas; retorna {@code true} se a chamada deve falhar. */
   private boolean simulateFailure() {
-    LegacyProperties.Chaos chaos = properties.chaos();
+    LegacyFaultPolicy.State chaos = faultPolicy.state();
     if (chaos.latencyMs() > 0) {
       try {
         Thread.sleep(chaos.latencyMs());

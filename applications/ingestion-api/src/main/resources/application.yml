@@ -9,6 +9,13 @@ server:
   max-http-request-header-size: 16KB
 
 ingestion:
+  fingerprint:
+    enabled: ${INGESTION_FINGERPRINT_ENABLED:false}
+    mode: ${INGESTION_FINGERPRINT_MODE:kms}
+    table-name: ${INGESTION_FINGERPRINT_TABLE:ProposalDeduplication}
+    key-version: ${INGESTION_FINGERPRINT_KEY_VERSION:v2}
+    kms-key-id: ${INGESTION_FINGERPRINT_KMS_KEY_ID:}
+    local-key: ${INGESTION_FINGERPRINT_LOCAL_KEY:}
   inbox:
     type: ${INGESTION_INBOX_TYPE:dynamodb}
     table-name: ${INGESTION_INBOX_TABLE:DurableInbox}

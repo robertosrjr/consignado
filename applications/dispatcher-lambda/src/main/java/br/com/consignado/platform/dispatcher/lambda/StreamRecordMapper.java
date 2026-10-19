@@ -29,7 +29,19 @@ public final class StreamRecordMapper {
         bool(image, InboxAttributes.PORTABILITY),
         number(image, InboxAttributes.AMOUNT),
         string(image, InboxAttributes.TRACING_ID),
-        string(image, InboxAttributes.STATUS));
+        string(image, InboxAttributes.STATUS),
+        traceContext(image));
+  }
+
+  private static Map<String, String> traceContext(Map<String, AttributeValue> image) {
+    Map<String, String> result = new java.util.HashMap<>();
+    for (String key : java.util.List.of("traceparent", "tracestate")) {
+      String value = string(image, key);
+      if (value != null) {
+        result.put(key, value);
+      }
+    }
+    return result;
   }
 
   private static String string(Map<String, AttributeValue> image, String name) {

@@ -33,7 +33,7 @@ O p95 alvo é **menor que 100 ms**, e nada no caminho crítico chama o legado ou
 
 ## Idempotência: por que a escrita condicional
 
-A duplicata é descartada pelo próprio DynamoDB, com `attribute_not_exists(idempotencyKey)` em uma única operação atômica. Não há leitura antes da escrita, então não existe janela de corrida entre dois robôs enviando a mesma chave ao mesmo tempo. Isso é o que impede dupla averbação e, por consequência, pagamento em duplicidade.
+A duplicata é descartada pelo próprio DynamoDB, com `attribute_not_exists(idempotencyKey)` em uma única operação atômica. Não há leitura antes da escrita, então não existe janela de corrida entre dois robôs enviando a mesma chave ao mesmo tempo. Isso impede uma segunda inclusão para a mesma chave técnica enquanto o registro existe. Não basta para garantir exatamente uma averbação entre réplicas ou reinícios do worker; consulte a [auditoria de idempotência](../../docs/auditoria-idempotencia.md).
 
 Na falha condicional, o adaptador pede `ALL_OLD` e devolve o `tracingId` e o instante da **primeira** aceitação. O robô que repetiu recebe a mesma resposta da primeira vez, o que torna a repetição segura e barata.
 

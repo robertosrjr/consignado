@@ -95,6 +95,20 @@ public final class LegacyHttpAdapter implements LegacyCorePort {
   }
 
   private LegacyResult call(LegacySubmission submission) {
+    try (var operation =
+        br.com.consignado.platform.telemetry.Telemetry.start(
+            "POST /v1/averbacoes", io.opentelemetry.api.trace.SpanKind.CLIENT)) {
+      operation.span().setAttribute("http.request.method", "POST");
+      try {
+        return callTraced(submission);
+      } catch (RuntimeException e) {
+        operation.failed(e);
+        throw e;
+      }
+    }
+  }
+
+  private LegacyResult callTraced(LegacySubmission submission) {
     HttpResponse<String> response;
     try {
       response = http.send(request(submission), HttpResponse.BodyHandlers.ofString());
@@ -105,6 +119,7 @@ public final class LegacyHttpAdapter implements LegacyCorePort {
       throw new LegacyUnavailableException("Chamada ao legado interrompida", e);
     }
     int status = response.statusCode();
+    io.opentelemetry.api.trace.Span.current().setAttribute("http.response.status_code", status);
     if (status == 200) {
       return confirmed(response.body());
     }
@@ -122,13 +137,15 @@ public final class LegacyHttpAdapter implements LegacyCorePort {
                 submission.convenio().name(),
                 submission.amount().amount(),
                 submission.installments()));
-    return HttpRequest.newBuilder(endpoint)
-        .timeout(requestTimeout)
-        .header("Content-Type", "application/json")
-        .header(HeaderNames.IDEMPOTENCY_KEY, submission.idempotencyKey().toString())
-        .header("X-Api-Key", apiKey)
-        .POST(HttpRequest.BodyPublishers.ofString(body))
-        .build();
+    HttpRequest.Builder builder =
+        HttpRequest.newBuilder(endpoint)
+            .timeout(requestTimeout)
+            .header("Content-Type", "application/json")
+            .header(HeaderNames.IDEMPOTENCY_KEY, submission.idempotencyKey().toString())
+            .header("X-Api-Key", apiKey)
+            .POST(HttpRequest.BodyPublishers.ofString(body));
+    br.com.consignado.platform.telemetry.TraceContext.capture().forEach(builder::header);
+    return builder.build();
   }
 
   private static LegacyResult confirmed(String body) {

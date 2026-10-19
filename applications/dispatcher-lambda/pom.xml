@@ -15,6 +15,7 @@
   <description>Roteamento QoS: DynamoDB Streams para SQS (fast ou standard), sem Spring</description>
 
   <dependencies>
+    <dependency><groupId>${project.groupId}</groupId><artifactId>platform-telemetry</artifactId><version>${project.version}</version></dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>shared</artifactId>

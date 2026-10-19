@@ -13,7 +13,34 @@ public record StreamRecordView(
     Boolean portability,
     String amount,
     String tracingId,
-    String status) {
+    String status,
+    java.util.Map<String, String> traceContext) {
+  public StreamRecordView(
+      String eventName,
+      String sequenceNumber,
+      String idempotencyKey,
+      String tenantId,
+      String convenioType,
+      Boolean portability,
+      String amount,
+      String tracingId,
+      String status) {
+    this(
+        eventName,
+        sequenceNumber,
+        idempotencyKey,
+        tenantId,
+        convenioType,
+        portability,
+        amount,
+        tracingId,
+        status,
+        java.util.Map.of());
+  }
+
+  public StreamRecordView {
+    traceContext = traceContext == null ? java.util.Map.of() : java.util.Map.copyOf(traceContext);
+  }
 
   public static final String INSERT = "INSERT";
 

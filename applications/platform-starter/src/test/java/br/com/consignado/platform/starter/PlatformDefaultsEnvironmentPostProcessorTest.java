@@ -9,6 +9,19 @@ import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
 class PlatformDefaultsEnvironmentPostProcessorTest {
+  @Test
+  void should_configure_otlp_only_when_explicitly_requested() {
+    StandardEnvironment env = new StandardEnvironment();
+    env.getPropertySources()
+        .addFirst(
+            new org.springframework.core.env.MapPropertySource(
+                "test",
+                Map.of("PLATFORM_OTLP_TRACES_ENDPOINT", "http://127.0.0.1:4318/v1/traces")));
+    new PlatformDefaultsEnvironmentPostProcessor()
+        .postProcessEnvironment(env, new SpringApplication());
+    assertThat(env.getProperty("management.opentelemetry.tracing.export.otlp.endpoint"))
+        .isEqualTo("http://127.0.0.1:4318/v1/traces");
+  }
 
   private final PlatformDefaultsEnvironmentPostProcessor processor =
       new PlatformDefaultsEnvironmentPostProcessor();
@@ -52,6 +65,40 @@ class PlatformDefaultsEnvironmentPostProcessorTest {
     assertThat(env.getProperty("management.metrics.tags.service")).isEqualTo("worker");
     assertThat(env.getProperty("management.metrics.tags.env")).isEqualTo("local");
     assertThat(env.getProperty("management.tracing.sampling.probability")).isEqualTo("1.0");
+  }
+
+  @Test
+  void should_keep_the_pushgateway_disabled_by_default() {
+    StandardEnvironment env = new StandardEnvironment();
+    env.getPropertySources()
+        .addFirst(new MapPropertySource("test", Map.of("spring.application.name", "worker")));
+
+    processor.postProcessEnvironment(env, new SpringApplication());
+
+    String pushgateway = "management.prometheus.metrics.export.pushgateway.";
+    assertThat(env.getProperty(pushgateway + "enabled")).isEqualTo("false");
+    assertThat(env.getProperty(pushgateway + "job")).isEqualTo("worker");
+    assertThat(env.getProperty(pushgateway + "grouping-key.instance")).isEqualTo("local");
+    assertThat(env.getProperty(pushgateway + "push-rate")).isEqualTo("10s");
+    assertThat(env.getProperty(pushgateway + "shutdown-operation")).isEqualTo("put");
+  }
+
+  @Test
+  void should_enable_the_pushgateway_from_the_environment() {
+    StandardEnvironment env = new StandardEnvironment();
+    env.getPropertySources()
+        .addFirst(
+            new MapPropertySource(
+                "env",
+                Map.of(
+                    "PLATFORM_PUSHGATEWAY_ENABLED", "true",
+                    "PLATFORM_PUSHGATEWAY_ADDRESS", "203.0.113.10:9091")));
+
+    processor.postProcessEnvironment(env, new SpringApplication());
+
+    String pushgateway = "management.prometheus.metrics.export.pushgateway.";
+    assertThat(env.getProperty(pushgateway + "enabled")).isEqualTo("true");
+    assertThat(env.getProperty(pushgateway + "address")).isEqualTo("203.0.113.10:9091");
   }
 
   @Test

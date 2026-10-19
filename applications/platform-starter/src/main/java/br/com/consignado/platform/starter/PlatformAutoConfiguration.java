@@ -9,6 +9,14 @@ import org.springframework.context.annotation.Bean;
 @AutoConfiguration
 @EnableConfigurationProperties(TenantMetricsProperties.class)
 public class PlatformAutoConfiguration {
+  @Bean
+  org.springframework.beans.factory.InitializingBean configurePlatformTracing(
+      org.springframework.beans.factory.ObjectProvider<io.opentelemetry.api.OpenTelemetry>
+          telemetry) {
+    return () ->
+        br.com.consignado.platform.telemetry.Telemetry.configure(
+            telemetry.getIfAvailable(io.opentelemetry.api.OpenTelemetry::noop));
+  }
 
   @Bean
   @ConditionalOnMissingBean

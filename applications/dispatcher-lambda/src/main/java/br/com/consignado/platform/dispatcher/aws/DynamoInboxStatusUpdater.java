@@ -26,6 +26,32 @@ public final class DynamoInboxStatusUpdater implements InboxStatusUpdater {
 
   @Override
   public void markDispatched(IdempotencyKey key, int priorityScore) {
+    markDispatched(key, priorityScore, null);
+  }
+
+  @Override
+  public void markDispatched(
+      IdempotencyKey key, int priorityScore, br.com.consignado.platform.shared.contract.Lane lane) {
+    Map<String, String> names =
+        new java.util.HashMap<>(
+            Map.of("#status", InboxAttributes.STATUS, "#score", InboxAttributes.PRIORITY_SCORE));
+    Map<String, AttributeValue> values =
+        new java.util.HashMap<>(
+            Map.of(
+                ":dispatched",
+                    AttributeValue.builder().s(InboxAttributes.STATUS_DISPATCHED).build(),
+                ":received", AttributeValue.builder().s(InboxAttributes.STATUS_RECEIVED).build(),
+                ":score", AttributeValue.builder().n(Integer.toString(priorityScore)).build()));
+    if (lane != null) {
+      names.put("#lane", InboxAttributes.LANE);
+      names.put("#routedAt", InboxAttributes.ROUTED_AT);
+      values.put(
+          ":routedAt",
+          AttributeValue.builder().n(Long.toString(System.currentTimeMillis())).build());
+      values.put(
+          ":lane",
+          AttributeValue.builder().s(lane.name().toLowerCase(java.util.Locale.ROOT)).build());
+    }
     UpdateItemRequest request =
         UpdateItemRequest.builder()
             .tableName(tableName)
@@ -33,19 +59,12 @@ public final class DynamoInboxStatusUpdater implements InboxStatusUpdater {
                 Map.of(
                     InboxAttributes.IDEMPOTENCY_KEY,
                     AttributeValue.builder().s(key.toString()).build()))
-            .updateExpression("SET #status = :dispatched, #score = :score")
+            .updateExpression(
+                "SET #status = :dispatched, #score = :score"
+                    + (lane == null ? "" : ", #lane = :lane, #routedAt = :routedAt"))
             .conditionExpression("#status = :received")
-            .expressionAttributeNames(
-                Map.of(
-                    "#status", InboxAttributes.STATUS,
-                    "#score", InboxAttributes.PRIORITY_SCORE))
-            .expressionAttributeValues(
-                Map.of(
-                    ":dispatched",
-                        AttributeValue.builder().s(InboxAttributes.STATUS_DISPATCHED).build(),
-                    ":received",
-                        AttributeValue.builder().s(InboxAttributes.STATUS_RECEIVED).build(),
-                    ":score", AttributeValue.builder().n(Integer.toString(priorityScore)).build()))
+            .expressionAttributeNames(names)
+            .expressionAttributeValues(values)
             .build();
     try {
       dynamo.updateItem(request);

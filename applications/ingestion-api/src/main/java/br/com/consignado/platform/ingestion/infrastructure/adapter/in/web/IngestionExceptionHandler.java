@@ -23,6 +23,12 @@ class IngestionExceptionHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(IngestionExceptionHandler.class);
 
+  @ExceptionHandler(br.com.consignado.platform.ingestion.domain.IdempotencyMismatchException.class)
+  ResponseEntity<ProblemDetail> mismatch(
+      br.com.consignado.platform.ingestion.domain.IdempotencyMismatchException ex) {
+    return problem(HttpStatus.UNPROCESSABLE_CONTENT, "Idempotency mismatch", ex.getMessage(), null);
+  }
+
   @ExceptionHandler(InvalidRequestException.class)
   ResponseEntity<ProblemDetail> invalid(InvalidRequestException ex) {
     return problem(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), null);

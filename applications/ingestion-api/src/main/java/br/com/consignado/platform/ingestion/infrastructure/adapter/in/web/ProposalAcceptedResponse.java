@@ -9,4 +9,10 @@ public record ProposalAcceptedResponse(
     @Schema(example = "e3b0c442-98fc-11ee-b9d1-0242ac120002") String idempotencyKey,
     @Schema(example = "7d36ce98-0000-4000-8000-000000000001") String tracingId,
     @Schema(description = "Instante do recebimento (epoch em segundos)", example = "1772841600")
-        long receivedAt) {}
+        long receivedAt,
+    @Schema(description = "UUID da proposta original, independente das chaves e fingerprints")
+        String proposalId) {
+  public ProposalAcceptedResponse(String status, String key, String trace, long receivedAt) {
+    this(status, key, trace, receivedAt, null);
+  }
+}

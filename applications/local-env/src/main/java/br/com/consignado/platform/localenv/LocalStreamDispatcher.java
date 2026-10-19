@@ -164,7 +164,19 @@ public final class LocalStreamDispatcher implements AutoCloseable {
         bool(image, InboxAttributes.PORTABILITY),
         n(image, InboxAttributes.AMOUNT),
         s(image, InboxAttributes.TRACING_ID),
-        s(image, InboxAttributes.STATUS));
+        s(image, InboxAttributes.STATUS),
+        traceContext(image));
+  }
+
+  private static Map<String, String> traceContext(Map<String, AttributeValue> image) {
+    Map<String, String> result = new HashMap<>();
+    for (String key : List.of("traceparent", "tracestate")) {
+      String value = s(image, key);
+      if (value != null) {
+        result.put(key, value);
+      }
+    }
+    return result;
   }
 
   private static String s(Map<String, AttributeValue> image, String name) {

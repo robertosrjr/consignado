@@ -82,8 +82,18 @@ public class IngestionConfig {
       name = "ingestion.inbox.type",
       havingValue = "dynamodb",
       matchIfMissing = true)
-  DurableInboxPort dynamoDbInbox(DynamoDbClient dynamoDbClient, IngestionProperties properties) {
+  DurableInboxPort dynamoDbInbox(
+      DynamoDbClient dynamoDbClient,
+      IngestionProperties properties,
+      org.springframework.core.env.Environment environment) {
     IngestionProperties.Inbox inbox = properties.inbox();
+    if (environment.getProperty("ingestion.fingerprint.enabled", Boolean.class, false)) {
+      return new br.com.consignado.platform.ingestion.infrastructure.adapter.out.persistence
+          .BusinessFingerprintInboxAdapter(
+          dynamoDbClient,
+          inbox.tableName(),
+          environment.getRequiredProperty("ingestion.fingerprint.table-name"));
+    }
     DurableInboxPort dynamo = new DynamoDbInboxAdapter(dynamoDbClient, inbox.tableName());
     if (inbox.recentKeysMaxEntries() == 0) {
       return dynamo;
@@ -100,7 +110,11 @@ public class IngestionConfig {
 
   @Bean
   @ConditionalOnProperty(name = "ingestion.inbox.type", havingValue = "memory")
-  InMemoryInboxAdapter inMemoryInbox() {
+  DurableInboxPort inMemoryInbox(org.springframework.core.env.Environment environment) {
+    if (environment.getProperty("ingestion.fingerprint.enabled", Boolean.class, false)) {
+      return new br.com.consignado.platform.ingestion.infrastructure.adapter.out.persistence
+          .InMemoryBusinessInboxAdapter();
+    }
     return new InMemoryInboxAdapter();
   }
 
@@ -124,7 +138,9 @@ public class IngestionConfig {
   @Bean
   @ConditionalOnProperty(name = "ingestion.payload.mode", havingValue = "kms")
   DataKeyProvider kmsDataKeyProvider(
-      KmsClient kmsClient, IngestionProperties properties, Clock clock) {
+      @org.springframework.beans.factory.annotation.Qualifier("kmsClient") KmsClient kmsClient,
+      IngestionProperties properties,
+      Clock clock) {
     IngestionProperties.Payload payload = properties.payload();
     return new KmsDataKeyProvider(
         kmsClient,
@@ -150,10 +166,19 @@ public class IngestionConfig {
       TracingIdPort tracing,
       IngestionProperties properties,
       MeterRegistry registry,
-      TenantTagPolicy tenantTags) {
+      TenantTagPolicy tenantTags,
+      org.springframework.beans.factory.ObjectProvider<
+              br.com.consignado.platform.ingestion.application.port.out.BusinessFingerprintPort>
+          fingerprints) {
     AcceptProposalService service =
         new AcceptProposalService(
-            quota, protection, inbox, clock, tracing, properties.inbox().retention());
+            quota,
+            protection,
+            inbox,
+            clock,
+            tracing,
+            properties.inbox().retention(),
+            fingerprints.getIfAvailable());
     return new MeteredAcceptProposalUseCase(service, registry, tenantTags);
   }
 }

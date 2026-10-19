@@ -1,12 +1,13 @@
 # applications — projeto Maven multi-módulo
 
-Código da PoC. Java 25, Maven 3.9+, Spring Boot 4.1.1. Para o contexto de negócio, veja o [README da raiz](../README.md).
+Código da PoC. Java 25, Maven 3.9+, Spring Boot 4.1.1. Veja o [contexto de negócio](../docs/narrativas/contexto-e-objetivos.md), a [visão técnica](../docs/manuais/visao-tecnica.md) e o [guia do ambiente local](../docs/manuais/ambiente-local.md).
 
 ## Módulos
 
 | Módulo | Papel | Documentação |
 |---|---|---|
 | `shared` | value objects e contratos; sem Spring e sem AWS | [README](shared/README.md) |
+| `platform-telemetry` | contexto W3C, spans de infraestrutura e SDK do dispatcher | [README](platform-telemetry/README.md) |
 | `platform-starter` | auto-configuração comum: logs ECS, Actuator, LGPD, erros | [README](platform-starter/README.md) |
 | `platform-aws` | adaptadores AWS reutilizáveis (KMS com cache) | [README](platform-aws/README.md) |
 | `mock-legacy` | Core Banking simulado que recusa acima de 180 TPS | [README](mock-legacy/README.md) |
@@ -96,4 +97,4 @@ As regras detalhadas estão nas skills em `../.claude/skills/` — carregue a do
 
 ## Observabilidade local
 
-Não há stack local. Os serviços expõem `/actuator/prometheus` para raspagem; o OTLP está desligado por padrão. A configuração do Grafana e do CloudWatch está em [observability/](observability/) e a stack roda no EC2 (ver [infrastructure/](../infrastructure/)).
+Não há stack local. Os serviços expõem `/actuator/prometheus` para raspagem; a instrumentação W3C e o SDK estão disponíveis localmente, com exportação opcional; a entrega no Jaeger ainda precisa de validação. A configuração do Grafana e do CloudWatch está em [observability/](observability/) e a stack roda no EC2 (ver [infrastructure/](../infrastructure/)).

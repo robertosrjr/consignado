@@ -64,11 +64,11 @@ class SmallAdaptersTest {
   }
 
   @Test
-  void should_reuse_the_mdc_trace_id_formatted_as_a_uuid() {
+  void should_not_reuse_the_mdc_trace_id_as_acceptance_identity() {
     MDC.put("traceId", "0123456789abcdef0123456789abcdef");
     try {
       assertThat(new SystemTracingIdAdapter().currentTracingId())
-          .isEqualTo("01234567-89ab-cdef-0123-456789abcdef");
+          .isNotEqualTo("01234567-89ab-cdef-0123-456789abcdef");
     } finally {
       MDC.remove("traceId");
     }

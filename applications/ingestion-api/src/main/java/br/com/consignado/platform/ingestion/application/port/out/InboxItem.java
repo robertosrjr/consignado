@@ -18,7 +18,31 @@ public record InboxItem(
     String protectedPayload,
     long createdAtEpochMillis,
     long ttlEpochSeconds,
-    String tracingId) {
+    String tracingId,
+    BusinessFingerprintPort.Fingerprints fingerprints) {
+
+  public InboxItem(
+      IdempotencyKey key,
+      TenantId tenant,
+      ConvenioType convenio,
+      boolean portability,
+      Money amount,
+      String protectedPayload,
+      long createdAt,
+      long ttl,
+      String tracingId) {
+    this(
+        key,
+        tenant,
+        convenio,
+        portability,
+        amount,
+        protectedPayload,
+        createdAt,
+        ttl,
+        tracingId,
+        null);
+  }
 
   /** Nunca imprime o payload protegido. */
   @Override

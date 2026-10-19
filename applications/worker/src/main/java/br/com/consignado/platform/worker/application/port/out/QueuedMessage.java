@@ -12,4 +12,12 @@ public interface QueuedMessage {
 
   /** Quantas vezes a fila entregou esta mensagem (1 na primeira entrega). */
   int receiveCount();
+
+  /** Reports a processing failure without coupling the application to a tracing library. */
+  default void processingFailed(RuntimeException failure) {}
+
+  /** Infrastructure restores per-message context inside the processing thread. */
+  default Runnable processingTask(Runnable task) {
+    return task;
+  }
 }

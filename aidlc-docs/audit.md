@@ -430,3 +430,136 @@
 **Context**: Construction U3 - resiliencia.
 
 ---
+
+## Retomada de sessao e pedido de subida no EC2
+**Timestamp**: 2026-10-16T12:00:00Z
+**User Input**: "onde paramos?" / "eu vou te passar a instancia e a chave para vc subir os componentes no docker do ec2"
+**AI Response**: Resumo do estado (ultima entrada: cache de chaves recentes na borda, sem testes; pendencias de aprovacao e perguntas T/Q). Pedido de subida no EC2 recebido; solicitados host, caminho do .pem (sem colar a chave no chat), usuario SSH e quais componentes subir.
+**Context**: Retomada; Operations/infra - EC2 com Docker (muda a premissa "sem Docker", que valia para a maquina local).
+
+---
+
+## Subida da pilha de observabilidade no EC2
+**Timestamp**: 2026-10-16T14:45:00Z
+**User Input**: "Instancia EC2: ubuntu@54.207.213.93\nChave: C:\Developer\Key\kp-dev-observability-stack.ppk\n\nCom isso em mão, conecte na EC2, vamos configurar os ambientes.\n- docker\n- prometheus\n- pushgateway\n- grafana \n- jaeguer\n\nacreditoq ue vc já tenha as configurações em m~eos" / "eu consegui conectar com o putty"
+**AI Response**: Conexao via plink/pscp com a chave de host fixada (ssh-ed25519 SHA256:ae6EG7rhkNurvV2vupcpeAPdEAFZ2QWSKN1Z1rqgWjg). Instancia: Ubuntu 26.04, 2 vCPU, 3,8 GB, sem swap. Docker 29.9.1 + Compose v5.6.0 instalados pelo repositorio oficial (rotacao de log no daemon). Enviado `infrastructure/Configuration/observability` (compose.sem-elasticsearch.yaml, config/, segredo do Grafana; sem config.txt) para ~/observability; .env a partir do .env.example. Subidos prometheus, pushgateway, alertmanager, jaeger (Badger) e grafana; todos 200, 5 alvos up, OTLP HTTP aceito. Pastas de provisionamento vazias criadas no servidor (dashboards/alerting/plugins). Externamente: 9091 aberta; 4317/4318 fechadas no Security Group; 3000/9090 so por tunel.
+**Context**: Operations - observabilidade no EC2.
+
+---
+
+## Portas OTLP do Jaeger no Security Group
+**Timestamp**: 2026-10-16T14:55:00Z
+**User Input**: "vou abrir as porta do jaeger"
+**AI Response**: Orientado a liberar 4317/4318 TCP so para o IP da aplicacao (ou SG da aplicacao), nao 0.0.0.0/0; UI 16686 continua por tunel. Teste externo sera feito apos a liberacao.
+**Context**: Operations - observabilidade no EC2.
+
+---
+
+## Acesso as telas (9090/3000/9093)
+**Timestamp**: 2026-10-16T15:05:00Z
+**User Input**: "abri as portas" / "não estou conseguindo acessar na minha maquin os endereços\nhttp://54.207.213.93:9090/\nhttp://54.207.213.93:3000/" / "o http://54.207.213.93:9093/ também não estou acessando o painel"
+**AI Response**: 4317/4318 acessiveis de fora; trace de teste 58ff6867c3efa0bfa1eaa5c146b9bed5 gravado no Jaeger. 9090/3000/9093/16686 nao abrem por desenho (BIND_ADDRESS=127.0.0.1). Oferecidas: (A) tunel SSH no PuTTY, recomendado; (B) BIND_ADDRESS=0.0.0.0 + SG so para o IP do usuario. Aguardando escolha.
+**Context**: Operations - observabilidade no EC2.
+
+---
+
+## Telas abertas pelo IP (opcao B)
+**Timestamp**: 2026-10-16T15:15:00Z
+**User Input**: "estou tentando pelo navegador" / escolha: "Abrir pelo IP, só para mim (Recomendado)" / "mas pq que eo jaeguer eum consigo acesar o painel?" / "grafana também tem painel" / "177.133.216.24/32 é meu ip" / "o putty esta aberto"
+**AI Response**: BIND_ADDRESS=0.0.0.0 no .env da EC2; conteineres recriados (3000/9090/9093/16686 em 0.0.0.0). Teste externo: 9093 HTTP 200; 3000, 9090, 16686 bloqueadas no Security Group. Pedido ao usuario liberar essas tres para 177.133.216.24/32.
+**Context**: Operations - observabilidade no EC2.
+
+---
+
+## Envio de metricas do teste de carga local ao Pushgateway
+**Timestamp**: 2026-10-16T15:30:00Z
+**User Input**: "eu vou subir a aplicação localmente para realizar um testes de carga local e enviar os dados para o pushgateway" / "veririque as configurações da aplicação para ver se os endereços estão corretos"
+**AI Response**: Verificado: nenhum servico tem envio ao Pushgateway (sem dependencia prometheus-metrics-exporter-pushgateway, sem propriedades management.prometheus.metrics.export.pushgateway.*); metricas so por scrape em /actuator/prometheus. Sem exportador OTLP (traces nao chegam ao Jaeger). Prometheus da EC2 raspa so o Pushgateway. Proposta de mudanca apresentada; aguardando aprovacao.
+**Context**: Construction U1/U7 - observabilidade.
+
+---
+
+## Pushgateway na aplicacao e paineis do Grafana (U7)
+**Timestamp**: 2026-10-16T15:35:00Z
+**User Input**: "quais são os dados de acesso do grafana?" / "os graficos do grafana já estão configurados?" / "como que sobr a aplicação mesmo?" / "com relação a limitação, não tem problema, vamos pegar as métricas da aplicação java"
+**AI Response**: Skill spring-metrics-skill carregada. Dependencia prometheus-metrics-exporter-pushgateway em mock-legacy, ingestion-api e worker. platform-starter: management.prometheus.metrics.export.pushgateway.* com falha fechada (PLATFORM_PUSHGATEWAY_ENABLED=false), address, job = nome do servico, grouping-key.instance, push-rate 10s, shutdown PUT; 2 testes novos. local-up.ps1 com -PushgatewayAddress. Tres paineis JSON em applications/observability/grafana/dashboards (Saude da Ingestao, Protecao Downstream, Backlog e Drenagem) provisionados no Grafana do EC2. Build: package SUCCESS; platform-starter 36 testes verdes. Prova real: mock-legacy local enviou ao Pushgateway do EC2 (grupo de prova apagado). Nao rodado: mvn verify completo (cache de chaves sem testes pode reprovar cobertura).
+**Context**: Construction U1/U7 - observabilidade.
+
+---
+
+## Diagnostico "No data" e desligamento
+**Timestamp**: 2026-10-16T18:10:00Z
+**User Input**: "grafana não esta recuperando os dados, NO DATA" / "conevte na instancia do ec2" / "pare todos os serviços" / "desligue o docker"
+**AI Response**: Causa do No data: servicos locais subiram sem -PushgatewayAddress (Pushgateway sem nenhum grupo); pilha do EC2 saudavel, 4 paineis (business-overview.json adicionado fora desta sessao). Servicos locais ja estavam parados. No EC2: compose stop (volumes preservados) e docker/containerd parados.
+**Context**: Operations - observabilidade no EC2.
+
+---
+
+## Incremento AI-DLC de resiliencia SRE
+**Timestamp**: 2026-10-18T01:52:41Z
+**Data local**: 17/10/2026 (America/Sao_Paulo)
+**User Input**: "então faça esse plano utilizando o ia-dlc"
+**AI Response**: Planejamento brownfield concluido com profundidade Standard: workspace detection, engenharia reversa incremental, requisitos e workflow planning. Criados README, system-overview.md, api-and-dependencies.md, requirements.md e execution-plan.md em aidlc-docs/inception/sre-resilience/. Estado READY_FOR_REVIEW, sem aprovacao presumida. Proposta: R0 preparacao reversivel; R1 falhas do legado; R2 DLQ e redrive; R3 carga progressiva; R4 resposta a incidente. Atualizados aidlc-state.md e indices docs/sre/README.md e docs/README.md.
+**Rules and Skills**: CLAUDE.md; regras efetivas em .aidlc-lite-rule-details/ (caminhos .kiro/.amazonq do guia estao desatualizados); common/core-rules.md, common/question-format-guide.md e regras Inception de workspace detection, reverse engineering, requirements analysis e workflow planning. Skills locais sre-observability-skill e chaos-engineering. Fluxo textual utilizado, sem alegar validacao de renderizacao Mermaid.
+**Evidence and Limits**: Baseline por leitura de codigo, configuracao e documentos existentes; constatada possivel lacuna entre OPEN por 2 min no alerta e sondagem do circuito apos 10 s, alem de redrive apos 3 recebimentos. Essas lacunas serao testadas na Construction. Nenhum codigo, regra, JMX ou dashboard alterado nesta entrega; nenhum experimento, build, acesso AWS ou inicio do ambiente executado. Ultimo estado operacional documentado permanece desligado.
+**Context**: INCEPTION incremental - plano solicitado, implementacao futura.
+
+---
+
+## Construction SRE R0 - controle reversivel do legado
+**Timestamp**: 2026-10-18T02:12:49Z
+**Data local**: 17/10/2026 (America/Sao_Paulo)
+**User Input**: "seguimos o plano do ia-dlc então"
+**Steering Input**: "não ligue mais a ec2 hoje"
+**AI Response**: Continuidade do plano autorizada; desenho da unidade R0 registrado antes do codigo em construction/sre-r0/unit-design.md. Implementados LegacyFaultPolicy e FaultControlController no mock, expiracao monotônica limitada, perfil/flag explicitos, token e origem loopback; ledger preservado. local-up.ps1 recebeu opt-in SreFaultControl e criado sre-legacy-fault.ps1 com manifest sanitizado/PrepareOnly. Guia docs/sre/preparacao-falhas-legado.md e indices/estado do workflow atualizados. Proximo R1/L1, sem alegar execucao integrada.
+**Validation**: mvn -pl mock-legacy -am verify com cache Maven existente: BUILD SUCCESS, 139 testes sem falhas/erros (67 shared, 5 telemetry, 37 starter, 30 mock); gates Enforcer/Spotless/JaCoCo passaram. AST de 2 scripts valido; PrepareOnly executado sem rede; links documentais e whitespace conferidos. Ver construction/sre-r0/validation.md. Tentativas iniciais de cache/formato foram corrigidas sem enfraquecer checks.
+**Scope and Limits**: Nenhum acesso AWS, inicio da EC2/Docker, publicacao no Grafana/SNS ou teste com coorte real nesta entrega. Testes locais em contextos isolados, nao prova de alertas/Jaeger nem dos cenarios R1. Restricao de nao iniciar EC2 em 17/10/2026 registrada e respeitada. Sem commit/push.
+**Context**: CONSTRUCTION incremental - R0 implementado e validado localmente; R1-R4 pendentes.
+
+---
+
+## R1/L1 - ambiente iniciado e falha transitoria do legado
+**Timestamp**: 2026-10-18T13:56:26Z
+**Data local**: 18/10/2026 (America/Sao_Paulo)
+**User Input**: "pode ligar o ambiente e vamos testar" / "vamos testar"
+**Authorization and Scope**: Inicio explicitamente autorizado em 18/10; restricao de nao ligar EC2 em 17/10 mantida como historica. EC2 existente i-082b5f183d18a8d25 iniciada em sa-east-1; IP observado 18.228.193.162. Compose existente iniciado por SSH, sem alterar IAM/SG. Aplicacoes locais iniciadas com captura SRE/controle de falhas e novos endpoints. Nenhum segredo exibido/persistido pelo controle.
+**Implementation**: Criado test-legacy-transient.ps1, que deriva JMX isolado, ativa uma unica falha de ate 2 s antes da primeira proposta e restaura em finally. Tentativas 01/02 INCOMPLETE antes de propostas/falha por argumentos PowerShell e serializacao XML. Corrigidos argumentos em array, campos vazios e leitura compartilhada do snapshot no Windows. Primeira captura SRE INCOMPLETE por corte envelhecido durante startup do SDK; SreCaptureMain agora inicia o cliente antes de ler o snapshot, sem relaxar frescor.
+**Evidence**: Aquecimento separado de 1 nova/1 replay. L1 tentativa03: 5 novas/5 replays, dez HTTP202, cinco CONFIRMED, deltas mock=1 falha caos/5 efeitos unicos/0 replay legado, fast/standard/DLQ vazias. Controle neutro antes do restore. Jaeger: cinco jornadas com quatro servicos; uma 503->200 no trace 055f4ce43f63e70323abc640456e4a0d, 14 spans e zero referencias internas nao resolvidas. Outras quatro sem retry, 11 spans cada.
+**SLI Evidence**: capture-02 com cobertura completa, nenhuma inconsistencia, R$5000 recebidos/confirmados, zero abertas. Relatorio FAIL (CLI3) por latencia 9/10 sob 100 e 200ms; primeira314ms; metas95/99% preservadas. Coorte standard imatura para2700s. Snapshot publicado no grupo SRE existente env=local/instance=desktop-psq0nq3; Prometheus confirmou coverage=1, status=1, cut1792331499.
+**Validation**: Empacotamento dos servicos package -DskipTests verde (nao e suite completa). Apos correcao do coletor: SreCaptureTest/SreCaptureMainTest, sete testes sem falhas, BUILD SUCCESS; AST do helper e cinquenta leituras concorrentes do snapshot validos. Links e whitespace conferidos. Fontes: construction/sre-r1/unit-design.md, validation.md e docs/sre/exercicio-falha-legado-l1.md. Artefatos brutos em applications/.local/legacy-l1-20261018-03, ignorados pelo Git.
+**Limits**: R1 parcial, proximo L2. Nenhuma purga/reset/reinicio durante a coorte, alteracao de alerta ou teste sintetico SNS/SQS. Nao comprova circuito aberto, entrega de notificacao, exactly-once financeiro em producao ou SLA mensal. Ambiente deixado ativo para inspecao, falha restaurada; sem commit/push.
+
+---
+
+## Encerramento dos ambientes e EC2 apos pausa
+**Timestamp**: 2026-10-18T15:21:12Z
+**Data local**: 18/10/2026, encerramento verificado as 12:19 (America/Sao_Paulo)
+**User Input**: "pode desligar os ambinetes e a EC2 para evitar gastos"
+**Authentication Reply**: "Login concluído"
+**AI Response**: Quatro PIDs validados contra os JARs do workspace e encerrados com local-down.ps1: worker23736, ingestion19960, mock12276 e local-env14840. Verificado zero processos registrados restantes e pids.json ausente. Compose stop encerrou todos os containers; Docker, socket e containerd retornaram inactive. Sem remocao de volumes ou evidencias.
+**AWS Evidence**: A sessao expirada foi renovada pelo usuario. stop-instances aceito para i-082b5f183d18a8d25 em sa-east-1; waiter instance-stopped e describe confirmaram stopped as 15:19:22 UTC. Volume EBS permanece associado. Evidencias em applications/.local/shutdown-local-20261018.json e shutdown-ec2-20261018.json.
+**Workflow State**: Testes continuam pausados. Revisao/conciliacao final do L2 pendente; fonte bruta02 INCOMPLETE preservada e controle reconciliado preparado antes do encerramento. Sessao em memoria encerrada: retomar pelos artefatos offline, sem presumir continuidade depois de restart. Nenhum teste novo ou commit/push nesta etapa de encerramento.
+
+---
+
+## R1/L3 — retomada e validacao local
+**Timestamp**: 2026-10-18T19:09:45.7337885+00:00
+**User Input**: conseguimos Seguir para o L3: circuit breaker, verificando proteção, alertas e recuperação.
+**AI Response**: Skills SRE e Chaos aplicadas. Adicionado ensaio com20 identidades, HTTP real loopback, circuito e fila em memoria. Protecao OPEN, preservacao de recebimentos e recuperacao aprovadas. Suite focada inicial28 testes; teste final com espera automatica10s passou separadamente. promtool3.5.0 oficial com checksum conferido aprovou cinco cenarios/15 checks novos,14 cenarios/98 checks existentes e sete regras. Lacuna de deteccao confirmada: alternancia OPEN/HALF_OPEN com backlog/frescor nao completa for2m. Nenhuma regra, redrive ou aplicacao alterados; sem EC2, envio de propostas para aplicacao, notificacao SNS, commit ou push. R1 integrado e conciliacao offline L2 permanecem pendentes. Relato em docs/sre/exercicio-circuit-breaker-l3.md; desenho em construction/sre-r1/l3-design.md; artefatos em applications/.local/legacy-l3-20261018-local/.
+
+---
+
+## Fechamento da PoC de SRE e observabilidade
+**Timestamp**: 2026-10-18 (America/Sao_Paulo)
+
+**User Input**: "registre o fechamento e a conclusão dela, com esse relatório em um doc referenciado no edme raiz"
+
+**Decision**: PoC de SRE e observabilidade encerrada com objetivos centrais atingidos e limitacoes conhecidas. O encerramento nao homologa capacidade de producao, SLA externo, exactly-once financeiro, recuperacao apos crash, redrive de DLQ ou operacao humana do canal de alertas.
+
+**Evidence**: Metricas e dashboards versionados; contrato e relatorio conciliado; tracing local; sete regras SRE; exercicio real de pausa do worker; L1 recuperado com conciliacao; L2 preservado como INCOMPLETE; L3 local aprovado com lacuna OPEN/HALF_OPEN reproduzida por promtool.
+
+**Disposition**: L2 final, L3 integrado, R2-R4, durabilidade, carga, monitor externo e atendimento SQS reclassificados como backlog para um novo incremento. Ambiente permanece desligado e evidencias preservadas.
+
+**Artifact**: `docs/sre/fechamento-poc-sre-observabilidade.md`, referenciado no README raiz, no indice de documentacao e no guia SRE. Nenhum commit ou push executado.
+
+---

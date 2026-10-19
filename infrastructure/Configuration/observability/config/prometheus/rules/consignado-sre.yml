@@ -1,0 +1,138 @@
+# Limites iniciais da PoC, ainda nao equivalem a um SLO acordado.
+# Sem action=trigger_agentic_loop: estes alertas notificam humanos.
+groups:
+  - name: consignado.sre
+    rules:
+      - alert: ConsignadoScrapeDown
+        expr: up{job=~"pushgateway|prometheus|alertmanager|grafana|jaeger"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          notification: sre
+          component: monitoring
+        annotations:
+          summary: "Coleta de metricas indisponivel"
+          description: "Um alvo esta DOWN ha 2 minutos. Conferir lastError em /targets, rede, logs e formato das metricas. DOWN nao comprova que a aplicacao parou."
+          runbook: "ALERTAS.md#consignadoscrapedown"
+          dashboard_path: "/d/consignado-sre-overview/consignado-sre-operacao"
+
+      - alert: ConsignadoPushMissing
+        expr: |
+          label_replace(
+            ((time() - push_time_seconds{job=~"ingestion-api|worker|mock-legacy"}) > 120)
+            or absent(push_time_seconds{job="ingestion-api"})
+            or absent(push_time_seconds{job="worker"})
+            or absent(push_time_seconds{job="mock-legacy"}),
+            "service", "$1", "job", "(.*)"
+          )
+          and on() (up{job="pushgateway"} == 1)
+        for: 1m
+        labels:
+          severity: critical
+          notification: sre
+          component: telemetry
+        annotations:
+          summary: "Aplicacao sem envio recente de metricas"
+          description: "Pushgateway esta acessivel, mas falta um servico esperado ou seu ultimo push passou de 120s, sustentado por 1 minuto. Conferir processo, exportador e rede. Em testes locais, silenciar durante paradas planejadas."
+          runbook: "ALERTAS.md#consignadopushmissing"
+          dashboard_path: "/d/consignado-sre-overview/consignado-sre-operacao"
+
+      - alert: ConsignadoIngestionErrors
+        expr: |
+          (
+            sum by (env, service, instance) (rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status=~"5.."}[5m]))
+            / sum by (env, service, instance) (rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals"}[5m]))
+          ) > 0.05
+          and on (env, service, instance)
+          (sum by (env, service, instance) (increase(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals"}[5m])) >= 100)
+          and on (instance) ((time() - push_time_seconds{job="ingestion-api"}) < 120)
+        for: 5m
+        labels:
+          severity: critical
+          notification: sre
+          component: ingestion
+        annotations:
+          summary: "Erros 5xx elevados na entrada de propostas"
+          description: "Mais de 5% de erros 5xx na janela de 5 minutos, com ao menos 100 requisicoes, por 5 minutos. Conferir inbox_unavailable, DynamoDB e timeouts. Repeticoes devem preservar Idempotency-Key."
+          runbook: "ALERTAS.md#consignadoingestionerrors"
+          dashboard_path: "/d/consignado-ingestion-health/consignado-saude-da-ingestao"
+          jaeger_service: "ingestion-api"
+          jaeger_operation: "http post /v1/proposals"
+
+      - alert: ConsignadoIngestionLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, env, service, instance) (rate(http_server_requests_seconds_bucket{service="ingestion-api",method="POST",uri="/v1/proposals"}[5m]))
+          ) > 0.5
+          and on (env, service, instance)
+          (sum by (env, service, instance) (increase(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals"}[5m])) >= 100)
+          and on (instance) ((time() - push_time_seconds{job="ingestion-api"}) < 120)
+        for: 10m
+        labels:
+          severity: warning
+          notification: sre
+          component: ingestion
+        annotations:
+          summary: "Latencia p95 elevada na entrada de propostas"
+          description: "p95 acima de 500ms por 10 minutos, com ao menos 100 requisicoes por janela de 5 minutos. Conferir banco, aquecimento, recursos e traces. Nao aumentar timeouts sem diagnostico."
+          runbook: "ALERTAS.md#consignadoingestionlatency"
+          dashboard_path: "/d/consignado-ingestion-health/consignado-saude-da-ingestao"
+          jaeger_service: "ingestion-api"
+          jaeger_operation: "http post /v1/proposals"
+
+      - alert: ConsignadoWorkerStalled
+        expr: |
+          (sum by (env, service, instance) (worker_queue_depth{service="worker"}) > 0)
+          and on (env, service, instance)
+          (max by (env, service, instance) (worker_processing_rate{service="worker"}) == 0)
+          and on (instance) ((time() - push_time_seconds{job="worker"}) < 120)
+        for: 5m
+        labels:
+          severity: critical
+          notification: sre
+          component: worker
+        annotations:
+          summary: "Fila com mensagens sem conclusoes no Worker"
+          description: "Ha mensagens na fila e a taxa de conclusao e zero ha 5 minutos. Conferir consumidores, permissao SQS, legado e circuit breaker. Profundidade e taxa sao amostras aproximadas."
+          runbook: "ALERTAS.md#consignadoworkerstalled"
+          dashboard_path: "/d/consignado-backlog-drain/consignado-backlog-e-drenagem"
+          jaeger_service: "worker"
+          jaeger_operation: "process proposal"
+
+      - alert: ConsignadoBacklogDelayed
+        expr: |
+          (max by (env, service, instance) (effective_drain_time_seconds{service="worker"}) > 300)
+          and on (env, service, instance)
+          (sum by (env, service, instance) (worker_queue_depth{service="worker"}) > 0)
+          and on (instance) ((time() - push_time_seconds{job="worker"}) < 120)
+        for: 10m
+        labels:
+          severity: warning
+          notification: sre
+          component: worker
+        annotations:
+          summary: "Estimativa de drenagem do backlog elevada"
+          description: "Estimativa acima de 5 minutos por 10 minutos, com fila pendente. Sem processamento a estimativa pode ser infinita. Nao equivale a idade da mensagem nem inclui previsao de novas chegadas."
+          runbook: "ALERTAS.md#consignadobacklogdelayed"
+          dashboard_path: "/d/consignado-backlog-drain/consignado-backlog-e-drenagem"
+          jaeger_service: "worker"
+          jaeger_operation: "process proposal"
+
+      - alert: ConsignadoLegacyUnavailable
+        expr: |
+          (max by (env, service, instance) (worker_legacy_circuit_state{service="worker"}) == 2)
+          and on (env, service, instance)
+          (sum by (env, service, instance) (worker_queue_depth{service="worker"}) > 0)
+          and on (instance) ((time() - push_time_seconds{job="worker"}) < 120)
+        for: 2m
+        labels:
+          severity: critical
+          notification: sre
+          component: worker
+        annotations:
+          summary: "Circuit breaker do legado aberto com trabalho pendente"
+          description: "Circuit breaker no estado 2 (aberto) ha 2 minutos, com mensagens na fila. Conferir disponibilidade, capacidade e latencia do legado antes de reiniciar consumidores."
+          runbook: "ALERTAS.md#consignadolegacyunavailable"
+          dashboard_path: "/d/consignado-downstream-protection/consignado-protecao-downstream"
+          jaeger_service: "worker"
+          jaeger_operation: "POST /v1/averbacoes"

@@ -15,6 +15,8 @@ public final class InboxAttributes {
   public static final String PORTABILITY = "portability";
   public static final String AMOUNT = "amount";
   public static final String PRIORITY_SCORE = "priorityScore";
+  public static final String LANE = "lane";
+  public static final String ROUTED_AT = "routedAt";
   public static final String PAYLOAD = "payload";
   public static final String TRACING_ID = "tracingId";
   public static final String STATUS = "status";

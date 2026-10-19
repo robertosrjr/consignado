@@ -1,0 +1,457 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Consignado - Borda de Absorcao">
+      <stringProp name="TestPlan.comments">01 fumaca, 02 carga, 03 duplicatas concorrentes, 04 negocio controlado com replay. Use executar.ps1. 202 nao garante averbacao; conferir finalizacoes no Grafana. Mock atual nao simula rejeicao de negocio.</stringProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">true</boolProp>
+    </TestPlan>
+    <hashTree>
+      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="00 Validacao e inicializacao">
+        <intProp name="ThreadGroup.num_threads">1</intProp>
+        <intProp name="ThreadGroup.ramp_time">1</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <stringProp name="LoopController.loops">1</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </SetupThreadGroup>
+      <hashTree>
+        <JSR223Sampler guiclass="TestBeanGUI" testclass="JSR223Sampler" testname="Valida parametros e inicia contadores" enabled="true">
+          <stringProp name="scriptLanguage">groovy</stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="cacheKey">true</stringProp>
+          <stringProp name="script">try {
+    int tenants = props.getProperty(&apos;tenants&apos;,&apos;20&apos;) as int
+    assert tenants &gt;= 0: &apos;tenants nao pode ser negativo&apos;
+    boolean active = [&apos;smoke_threads&apos;,&apos;load_threads&apos;,&apos;storm_threads&apos;,&apos;business_threads&apos;].any { (props.getProperty(it, it == &apos;smoke_threads&apos; ? &apos;1&apos; : &apos;0&apos;) as int) &gt; 0 }
+    assert !active || tenants &gt; 0: &apos;tenants deve ser positivo ao executar cenarios HTTP&apos;
+    for (String name : [&apos;smoke_threads&apos;,&apos;load_threads&apos;,&apos;storm_threads&apos;,&apos;business_threads&apos;]) {
+        assert (props.getProperty(name, name == &apos;smoke_threads&apos; ? &apos;1&apos; : &apos;0&apos;) as int) &gt;= 0: name + &apos; nao pode ser negativo&apos;
+    }
+    assert (props.getProperty(&apos;business_threads&apos;,&apos;0&apos;) as int) &lt;= 1: &apos;negocio usa apenas uma thread&apos;
+    int requests = props.getProperty(&apos;business_requests&apos;,&apos;10&apos;) as int
+    assert requests &gt; 0: &apos;business_requests deve ser positivo&apos;
+    BigDecimal amount = new BigDecimal(props.getProperty(&apos;business_amount&apos;,&apos;1000.00&apos;)).setScale(2)
+    assert amount &gt; 0 &amp;&amp; amount &lt; new BigDecimal(&apos;10000000000&apos;): &apos;business_amount fora do contrato&apos;
+    Math.multiplyExact(amount.movePointRight(2).longValueExact(), (long) requests)
+    assert props.getProperty(&apos;business_convenio&apos;,&apos;INSS&apos;) in [&apos;INSS&apos;,&apos;ESOCIAL_CLT&apos;,&apos;SIAPE_PUBLICO&apos;]: &apos;convenio invalido&apos;
+    assert props.getProperty(&apos;business_portability&apos;,&apos;false&apos;) in [&apos;true&apos;,&apos;false&apos;]: &apos;portabilidade invalida&apos;
+    props.put(&apos;sre_attempt_count&apos;, new java.util.concurrent.atomic.AtomicLong())
+    props.put(&apos;storm_key&apos;, UUID.randomUUID().toString())
+    for (String name : [&apos;storm_received&apos;,&apos;storm_duplicate&apos;,&apos;business_received&apos;,&apos;business_duplicates&apos;]) props.put(name, new java.util.concurrent.atomic.AtomicInteger())
+    props.put(&apos;business_cents&apos;, new java.util.concurrent.atomic.AtomicLong())
+    SampleResult.setResponseCode(&apos;200&apos;)
+    SampleResult.setResponseMessage(&apos;Parametros validos&apos;)
+    SampleResult.setSuccessful(true)
+} catch (Throwable error) {
+    SampleResult.setResponseCode(&apos;400&apos;)
+    SampleResult.setResponseMessage(error.message ?: &apos;Parametros invalidos&apos;)
+    SampleResult.setSuccessful(false)
+}</stringProp>
+        </JSR223Sampler>
+        <hashTree/>
+      </hashTree>
+      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults (ingestion-api)" enabled="true">
+        <intProp name="HTTPSampler.connect_timeout">2000</intProp>
+        <intProp name="HTTPSampler.response_timeout">5000</intProp>
+        <stringProp name="HTTPSampler.domain">${__P(host,127.0.0.1)}</stringProp>
+        <stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp>
+        <stringProp name="HTTPSampler.protocol">${__P(protocol,http)}</stringProp>
+        <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+          <collectionProp name="Arguments.arguments"/>
+        </elementProp>
+        <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp>
+      </ConfigTestElement>
+      <hashTree/>
+      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="00 Tokens dos parceiros" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${__P(tenants,20)}</stringProp>
+        <intProp name="ThreadGroup.ramp_time">1</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <stringProp name="LoopController.loops">1</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </SetupThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /token" enabled="true">
+          <stringProp name="HTTPSampler.domain">${__P(token_host,127.0.0.1)}</stringProp>
+          <stringProp name="HTTPSampler.port">${__P(token_port,8082)}</stringProp>
+          <stringProp name="HTTPSampler.protocol">${__P(token_protocol,http)}</stringProp>
+          <stringProp name="HTTPSampler.path">/token?tenant=${tenant}&amp;ttl=${__P(token_ttl,7200)}</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+            <collectionProp name="Arguments.arguments"/>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="parceiro desta thread" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script">vars.put(&apos;tenant&apos;, String.format(&apos;banco-%03d&apos;, ctx.getThreadNum() + 1))</stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="extrai access_token" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">token</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.access_token</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">TOKEN_NAO_ENCONTRADO</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="publica token e chave da tempestade" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script">String token = vars.get(&apos;token&apos;)
+if (prev.getResponseCode() != &apos;200&apos; || !token || token == &apos;TOKEN_NAO_ENCONTRADO&apos; || token == &apos;null&apos;) {
+    prev.setSuccessful(false)
+    prev.setResponseMessage(&apos;Emissao de token falhou ou access_token ausente&apos;)
+} else {
+    props.put(&apos;token_&apos; + vars.get(&apos;tenant&apos;), token)
+}</stringProp>
+          </JSR223PostProcessor>
+          <hashTree/>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="token emitido (200)" enabled="true">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49586">200</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.custom_message">emissor de token indisponivel: o ambiente local esta no ar?</stringProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Cabecalhos da API" enabled="true">
+        <collectionProp name="HeaderManager.headers">
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Content-Type</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Authorization</stringProp>
+            <stringProp name="Header.value">Bearer ${token}</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">X-Tenant-ID</stringProp>
+            <stringProp name="Header.value">${tenant}</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Idempotency-Key</stringProp>
+            <stringProp name="Header.value">${key}</stringProp>
+          </elementProp>
+        </collectionProp>
+      </HeaderManager>
+      <hashTree/>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="01 Fumaca" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${__P(smoke_threads,1)}</stringProp>
+        <intProp name="ThreadGroup.ramp_time">1</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <stringProp name="LoopController.loops">${__P(smoke_loops,10)}</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /v1/proposals (fumaca)" enabled="true">
+          <stringProp name="HTTPSampler.path">/v1/proposals</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{&quot;customerCpf&quot;:&quot;${cpf}&quot;,&quot;convenioCode&quot;:&quot;${convenio}&quot;,&quot;isPortability&quot;:${portability},&quot;amount&quot;:${amount},&quot;installments&quot;:${installments}}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="gera proposta" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename">${__groovy(org.apache.jmeter.services.FileServer.getFileServer().getBaseDir())}/gera-proposta.groovy</stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script"></stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
+          <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="202 + status + chave + tracing" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename">${__groovy(org.apache.jmeter.services.FileServer.getFileServer().getBaseDir())}/valida-proposta.groovy</stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script"></stringProp>
+          </JSR223Assertion>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="02 Carga (vazao constante)">
+        <stringProp name="ThreadGroup.num_threads">${__P(load_threads,0)}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${__P(ramp,10)}</stringProp>
+        <stringProp name="ThreadGroup.duration">${__P(duration,300)}</stringProp>
+        <longProp name="ThreadGroup.delay">0</longProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="vazao compartilhada do grupo (rps x 60)" enabled="true">
+          <stringProp name="throughput">${__groovy((props.getProperty(&quot;rps&quot;\,&quot;500&quot;) as double) * 60)}</stringProp>
+          <intProp name="calcMode">4</intProp>
+        </ConstantThroughputTimer>
+        <hashTree/>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /v1/proposals (carga)" enabled="true">
+          <stringProp name="HTTPSampler.path">/v1/proposals</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{&quot;customerCpf&quot;:&quot;${cpf}&quot;,&quot;convenioCode&quot;:&quot;${convenio}&quot;,&quot;isPortability&quot;:${portability},&quot;amount&quot;:${amount},&quot;installments&quot;:${installments}}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="gera proposta" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename">${__groovy(org.apache.jmeter.services.FileServer.getFileServer().getBaseDir())}/gera-proposta.groovy</stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script"></stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
+          <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="resposta em ate ${__P(max_ms,100)} ms" enabled="true">
+            <stringProp name="DurationAssertion.duration">${__P(max_ms,100)}</stringProp>
+          </DurationAssertion>
+          <hashTree/>
+          <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="202 + status + chave + tracing" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename">${__groovy(org.apache.jmeter.services.FileServer.getFileServer().getBaseDir())}/valida-proposta.groovy</stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script"></stringProp>
+          </JSR223Assertion>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="03 Tempestade de duplicatas (mesma chave)" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${__P(storm_threads,0)}</stringProp>
+        <intProp name="ThreadGroup.ramp_time">1</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <stringProp name="LoopController.loops">1</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <SyncTimer guiclass="TestBeanGUI" testclass="SyncTimer" testname="dispara todas juntas" enabled="true">
+          <stringProp name="groupSize">${__P(storm_threads,0)}</stringProp>
+          <longProp name="timeoutInMs">15000</longProp>
+        </SyncTimer>
+        <hashTree/>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /v1/proposals (mesma chave)" enabled="true">
+          <stringProp name="HTTPSampler.path">/v1/proposals</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{&quot;customerCpf&quot;:&quot;52998224725&quot;,&quot;convenioCode&quot;:&quot;INSS&quot;,&quot;isPortability&quot;:false,&quot;amount&quot;:15000.50,&quot;installments&quot;:84}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="mesma chave, mesmo parceiro" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script">vars.put(&apos;tenant&apos;, &apos;banco-001&apos;)
+vars.put(&apos;token&apos;, props.getProperty(&apos;token_banco-001&apos;))
+vars.put(&apos;key&apos;, props.getProperty(&apos;storm_key&apos;))
+vars.put(&apos;expected_status&apos;, &apos;RECEIVED|DUPLICATE_ACCEPTED&apos;)
+vars.put(&apos;business_case&apos;, &apos;false&apos;)</stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="conta RECEIVED e DUPLICATE_ACCEPTED" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script">if (prev.getResponseCode() == &apos;202&apos;) {
+    try {
+        def body = new groovy.json.JsonSlurper().parseText(prev.getResponseDataAsString())
+        if (body.status == &apos;RECEIVED&apos;) props.get(&apos;storm_received&apos;).incrementAndGet()
+        if (body.status == &apos;DUPLICATE_ACCEPTED&apos;) props.get(&apos;storm_duplicate&apos;).incrementAndGet()
+    } catch (Exception ignored) { /* A assercao JSON acusa a falha. */ }
+}</stringProp>
+          </JSR223PostProcessor>
+          <hashTree/>
+          <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="202 + status + chave + tracing" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename">${__groovy(org.apache.jmeter.services.FileServer.getFileServer().getBaseDir())}/valida-proposta.groovy</stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script"></stringProp>
+          </JSR223Assertion>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="04 Negocio controlado e replay" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${__P(business_threads,0)}</stringProp>
+        <intProp name="ThreadGroup.ramp_time">1</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">stopthread</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <stringProp name="LoopController.loops">${__P(business_requests,10)}</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST negocio (nova)" enabled="true">
+          <stringProp name="HTTPSampler.path">/v1/proposals</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{&quot;customerCpf&quot;:&quot;${cpf}&quot;,&quot;convenioCode&quot;:&quot;${convenio}&quot;,&quot;isPortability&quot;:${portability},&quot;amount&quot;:${amount},&quot;installments&quot;:${installments}}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="gera proposta" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename">${__groovy(org.apache.jmeter.services.FileServer.getFileServer().getBaseDir())}/gera-negocio.groovy</stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script"></stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
+          <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="202 + status + chave + tracing" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename">${__groovy(org.apache.jmeter.services.FileServer.getFileServer().getBaseDir())}/valida-proposta.groovy</stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script"></stringProp>
+          </JSR223Assertion>
+          <hashTree/>
+        </hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST negocio (replay)" enabled="true">
+          <stringProp name="HTTPSampler.path">/v1/proposals</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{&quot;customerCpf&quot;:&quot;${cpf}&quot;,&quot;convenioCode&quot;:&quot;${convenio}&quot;,&quot;isPortability&quot;:${portability},&quot;amount&quot;:${amount},&quot;installments&quot;:${installments}}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="gera proposta" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script">vars.put(&apos;expected_status&apos;, &apos;DUPLICATE_ACCEPTED&apos;)</stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
+          <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="202 + status + chave + tracing" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="filename">${__groovy(org.apache.jmeter.services.FileServer.getFileServer().getBaseDir())}/valida-proposta.groovy</stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script"></stringProp>
+          </JSR223Assertion>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+      <PostThreadGroup guiclass="PostThreadGroupGui" testclass="PostThreadGroup" testname="99 Veredito de idempotencia e negocio" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${__groovy((props.getProperty(&quot;storm_threads&quot;\,&quot;0&quot;) as int) &gt; 0 || (props.getProperty(&quot;business_threads&quot;\,&quot;0&quot;) as int) &gt; 0 ? 1 : 0)}</stringProp>
+        <intProp name="ThreadGroup.ramp_time">1</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <stringProp name="LoopController.loops">1</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </PostThreadGroup>
+      <hashTree>
+        <JSR223Sampler guiclass="TestBeanGUI" testclass="JSR223Sampler" testname="Confere novas, duplicatas e valor recebido" enabled="true">
+          <stringProp name="scriptLanguage">groovy</stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="cacheKey">true</stringProp>
+          <stringProp name="script">import groovy.json.JsonOutput
+int storm = props.getProperty(&apos;storm_threads&apos;, &apos;0&apos;) as int
+int business = props.getProperty(&apos;business_threads&apos;, &apos;0&apos;) as int
+def report = [:]
+boolean ok = true
+if (storm &gt; 0) {
+    int received = props.get(&apos;storm_received&apos;).get()
+    int duplicate = props.get(&apos;storm_duplicate&apos;).get()
+    report.storm = [received:received, duplicates:duplicate, expectedDuplicates:storm-1]
+    ok &amp;= received == 1 &amp;&amp; duplicate == storm-1
+}
+if (business &gt; 0) {
+    int n = props.getProperty(&apos;business_requests&apos;,&apos;10&apos;) as int
+    long cents = new BigDecimal(props.getProperty(&apos;business_amount&apos;,&apos;1000.00&apos;)).movePointRight(2).longValueExact() * n
+    int received = props.get(&apos;business_received&apos;).get()
+    int duplicate = props.get(&apos;business_duplicates&apos;).get()
+    long actual = props.get(&apos;business_cents&apos;).get()
+    report.business = [received:received, duplicates:duplicate, amountBrl:BigDecimal.valueOf(actual,2), expectedReceived:n, expectedAmountBrl:BigDecimal.valueOf(cents,2), ticketBrl:props.getProperty(&apos;business_amount&apos;,&apos;1000.00&apos;)]
+    ok &amp;= received == n &amp;&amp; duplicate == n &amp;&amp; actual == cents
+}
+String text = JsonOutput.toJson(report)
+log.info(&apos;RESULTADO_CONTROLADO &apos; + text)
+SampleResult.setResponseData(text, &apos;UTF-8&apos;)
+SampleResult.setResponseCode(ok ? &apos;200&apos; : &apos;500&apos;)
+SampleResult.setResponseMessage(ok ? &apos;Contagens e valores conferem na entrada&apos; : &apos;Divergencia nas contagens ou valores; ver log&apos;)
+SampleResult.setSuccessful(ok)
+String captureFile = props.getProperty(&apos;sre_summary_file&apos;, &apos;&apos;)
+if (captureFile) {
+    new File(captureFile).setText(JsonOutput.toJson([schemaVersion:1,attempts:props.get(&apos;sre_attempt_count&apos;).get(),completed:true]), &apos;UTF-8&apos;)
+}</stringProp>
+        </JSR223Sampler>
+        <hashTree/>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

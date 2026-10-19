@@ -1,0 +1,57 @@
+# Modelo, NAO carregado automaticamente. Substituir dados SMTP/destino antes de ativar.
+# Senha fica fora do YAML, em arquivo legivel pelo uid do container.
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: smtp.example.invalid:587
+  smtp_from: alertas@example.invalid
+  smtp_auth_username: alertas@example.invalid
+  smtp_auth_password_file: /etc/alertmanager/secrets/smtp-password
+  smtp_require_tls: true
+
+route:
+  receiver: blackhole
+  group_by: [alertname, env, service, job]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: sre-email
+      matchers: ['notification="sre"']
+      routes:
+        - receiver: sre-email
+          matchers: ['severity="critical"']
+          repeat_interval: 1h
+    # Preserva a rota legada. As novas regras nao possuem esta action.
+    - receiver: langgraph-orchestrator
+      matchers: ['action="trigger_agentic_loop"']
+
+receivers:
+  - name: sre-email
+    email_configs:
+      - to: destinatario@example.invalid
+        send_resolved: true
+        headers:
+          Subject: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }})'
+  - name: langgraph-orchestrator
+    webhook_configs:
+      - url: https://guogx4qqwlinbhlsqlwlfhq64q0jgpzc.lambda-url.sa-east-1.on.aws/
+        send_resolved: false
+        max_alerts: 10
+  - name: blackhole
+
+inhibit_rules:
+  # Nao repetir aviso de latencia quando o mesmo servico apresenta erros criticos.
+  - source_matchers: ['alertname="ConsignadoIngestionErrors"']
+    target_matchers: ['alertname="ConsignadoIngestionLatency"']
+    equal: [env, service, instance]
+  # Causa conhecida do backlog evita uma cascata de avisos.
+  - source_matchers: ['alertname="ConsignadoLegacyUnavailable"']
+    target_matchers: ['alertname=~"ConsignadoWorkerStalled|ConsignadoBacklogDelayed"']
+    equal: [env, service, instance]
+  - source_matchers: ['alertname="ConsignadoWorkerStalled"']
+    target_matchers: ['alertname="ConsignadoBacklogDelayed"']
+    equal: [env, service, instance]
+  # Regra legada, restrita aos alertas legados que compartilham action.
+  - source_matchers: ['severity="critical"', 'action="trigger_agentic_loop"']
+    target_matchers: ['severity="warning"', 'action="trigger_agentic_loop"']
+    equal: [application, alertname, instance]

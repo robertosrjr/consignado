@@ -8,6 +8,7 @@ import br.com.consignado.platform.worker.application.port.out.ProposalSeed;
 import br.com.consignado.platform.worker.domain.Proposal;
 import br.com.consignado.platform.worker.domain.ProposalEvent;
 import br.com.consignado.platform.worker.domain.ProposalStatus;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -28,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class InMemoryProposalRepository implements ProposalRepositoryPort {
 
   private final ClockPort clock;
+  private final Map<IdempotencyKey, Instant> terminalCommittedAt = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<IdempotencyKey, Proposal> proposals = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<IdempotencyKey, List<ProposalEvent>> events =
       new ConcurrentHashMap<>();
@@ -41,7 +43,7 @@ public final class InMemoryProposalRepository implements ProposalRepositoryPort 
   }
 
   @Override
-  public CreationResult createPendingIfAbsent(ProposalSeed seed) {
+  public synchronized CreationResult createPendingIfAbsent(ProposalSeed seed) {
     AtomicBoolean created = new AtomicBoolean(false);
     Proposal proposal =
         proposals.compute(
@@ -63,7 +65,7 @@ public final class InMemoryProposalRepository implements ProposalRepositoryPort 
   }
 
   @Override
-  public void save(Proposal proposal, List<ProposalEvent> newEvents) {
+  public synchronized void save(Proposal proposal, List<ProposalEvent> newEvents) {
     proposals.compute(
         proposal.key(),
         (key, existing) -> {
@@ -77,6 +79,7 @@ public final class InMemoryProposalRepository implements ProposalRepositoryPort 
             countByStatus.get(existing.status()).decrementAndGet();
           }
           countByStatus.get(proposal.status()).incrementAndGet();
+          if (proposal.isFinal()) terminalCommittedAt.put(key, clock.now());
           eventsOf(key).addAll(newEvents);
           return proposal;
         });
@@ -101,6 +104,29 @@ public final class InMemoryProposalRepository implements ProposalRepositoryPort 
   public int size() {
     return proposals.size();
   }
+
+  /** Consistent, local-only measurement cut. No payload, tenant, financial value or trace data. */
+  public synchronized CaptureSnapshot captureSnapshot() {
+    Instant observedAt = clock.now();
+    List<CaptureState> states =
+        proposals.values().stream()
+            .map(
+                proposal ->
+                    new CaptureState(
+                        proposal.key().toString(),
+                        proposal.lane().name().toLowerCase(java.util.Locale.ROOT),
+                        proposal.status().name(),
+                        terminalCommittedAt.get(proposal.key()) == null
+                            ? null
+                            : terminalCommittedAt.get(proposal.key()).toString()))
+            .sorted(java.util.Comparator.comparing(CaptureState::canonicalId))
+            .toList();
+    return new CaptureSnapshot(observedAt.toString(), states);
+  }
+
+  public record CaptureState(String canonicalId, String lane, String status, String committedAt) {}
+
+  public record CaptureSnapshot(String observedAt, List<CaptureState> states) {}
 
   private List<ProposalEvent> eventsOf(IdempotencyKey key) {
     return events.computeIfAbsent(
