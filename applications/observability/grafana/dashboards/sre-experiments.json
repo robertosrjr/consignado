@@ -1,0 +1,1872 @@
+{
+  "uid": "consignado-sre-experiments",
+  "title": "Consignado - SRE - Experimentos",
+  "description": "SLIs e orçamento do último experimento offline publicado explicitamente; sem integração automática ou SLA mensal.",
+  "tags": ["consignado","sre","experimentos"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "label": "Ambiente",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(sre_experiment_report_status{job=\"sre-experiment\"}, env)",
+          "refId": "v_env"
+        },
+        "definition": "label_values(sre_experiment_report_status{job=\"sre-experiment\"}, env)",
+        "includeAll": false,
+        "multi": false,
+        "refresh": 2
+      },
+      {
+        "name": "instance",
+        "label": "Origem do relatório",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(sre_experiment_report_status{job=\"sre-experiment\",env=~\"$env\"}, instance)",
+          "refId": "v_instance"
+        },
+        "definition": "label_values(sre_experiment_report_status{job=\"sre-experiment\",env=~\"$env\"}, instance)",
+        "includeAll": false,
+        "multi": false,
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Último experimento publicado — não é SLO mensal",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 5
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Este painel usa **gauges do último relatório normalizado**, enviados explicitamente ao job `sre-experiment`. Não aplica rate/increase aos snapshots. A captura local opt-in integra JMeter/Inbox/worker em experimentos isolados; a projeção operacional contínua permanece pendente. **Nenhum relatório foi publicado automaticamente.** Sem fonte, sem eventos ou com cobertura incompleta, os indicadores ficam sem dados. Um relatório antigo permanece um resultado histórico; confira o corte de observação. Fixtures devem usar ambiente/instância próprios, separados de testes reais."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Resultado do experimento",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 10,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_report_status{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"}",
+          "refId": "A",
+          "legendFormat": "Resultado do experimento",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "PASS — experimento",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "FAIL — meta violada",
+                  "color": "red"
+                },
+                "2": {
+                  "text": "INCOMPLETE — faltam evidências",
+                  "color": "gray"
+                },
+                "3": {
+                  "text": "OBSERVING — prazos abertos",
+                  "color": "orange"
+                },
+                "4": {
+                  "text": "NO_EVENTS — sem eventos",
+                  "color": "gray"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Cobertura das fontes",
+      "description": "Atestação das fontes e consistência estrutural, não prova independente de toda a operação.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 5,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"}",
+          "refId": "A",
+          "legendFormat": "Cobertura das fontes",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Incompleta",
+                  "color": "gray"
+                },
+                "1": {
+                  "text": "Declarada completa",
+                  "color": "blue"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Corte da observação — UTC",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 5,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1000 * sre_experiment_observed_at_seconds{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"}",
+          "refId": "A",
+          "legendFormat": "Corte da observação — UTC",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 32,
+      "type": "text",
+      "title": "Negócio — totais conciliados da execução",
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Totais da execução identificada pelas datas abaixo, no corte de observação do relatório.** Reenvios não somam novamente. Valores calculados em centavos; nenhuma estimativa por `increase()`. Atualizar a tela não recalcula os totais. Para mudar o resultado, coletar e publicar outro relatório. Cobertura incompleta deixa os cartões sem dados. Estes totais não representam toda a aplicação nem os últimos 10 minutos."
+      }
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Propostas recebidas no experimento",
+      "description": "Quantidade de propostas únicas aceitas dentro da janela da execução. Reenvios não somam novamente. Total do relatório conciliado, sem extrapolação por tempo.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_accepted{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Propostas recebidas no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 24,
+      "type": "stat",
+      "title": "Propostas confirmadas no experimento",
+      "description": "Propostas dessa execução confirmadas até o corte observado, incluindo confirmações tardias. Confirmação tardia não apaga violação de prazo do SLI C.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 12,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_confirmed{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Propostas confirmadas no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 25,
+      "type": "stat",
+      "title": "Propostas rejeitadas no experimento",
+      "description": "Propostas dessa execução com rejeição comercial válida até o corte observado. Erros técnicos continuam pendentes e não são classificados como rejeição comercial.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_rejected{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Propostas rejeitadas no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Propostas pendentes no experimento",
+      "description": "Propostas dessa execução sem decisão comercial válida no corte observado. Inclui falhas técnicas e DLQ. Não é o saldo de todas as propostas da aplicação.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 12,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_open{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Propostas pendentes no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 26,
+      "type": "stat",
+      "title": "Valor recebido no experimento",
+      "description": "Valores das propostas únicas aceitas na janela da execução. Duplicatas não somam novamente. Total conciliado em centavos, exibido em reais; não varia apenas com o avanço do relógio.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sre_experiment_received_cents{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} / 100) and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Valor recebido no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:financial:R$",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 27,
+      "type": "stat",
+      "title": "Valor confirmado no experimento",
+      "description": "Valores das propostas dessa execução confirmadas até o corte observado, mesmo quando a confirmação foi tardia. Total conciliado em centavos, exibido em reais; não varia apenas com o avanço do relógio.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 16,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sre_experiment_confirmed_cents{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} / 100) and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Valor confirmado no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:financial:R$",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 28,
+      "type": "stat",
+      "title": "Valor rejeitado no experimento",
+      "description": "Valores das propostas dessa execução com rejeição comercial válida até o corte observado. Total conciliado em centavos, exibido em reais; não varia apenas com o avanço do relógio.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sre_experiment_rejected_cents{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} / 100) and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Valor rejeitado no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:financial:R$",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 29,
+      "type": "stat",
+      "title": "Valor pendente no experimento",
+      "description": "Valores das propostas dessa execução ainda sem decisão comercial válida no corte observado. Inclui falhas técnicas e DLQ. Total conciliado em centavos, exibido em reais; não varia apenas com o avanço do relógio.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 16,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sre_experiment_open_cents{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} / 100) and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Valor pendente no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:financial:R$",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 30,
+      "type": "stat",
+      "title": "Ticket médio recebido no experimento",
+      "description": "Valor recebido dividido pela quantidade de propostas únicas aceitas nessa execução. Exibido com duas casas decimais; sem propostas aceitas, fica sem dados.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((sre_experiment_received_cents{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} / 100) / (sre_experiment_accepted{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} > 0)) and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Ticket médio recebido no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:financial:R$",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 31,
+      "type": "stat",
+      "title": "Ticket médio confirmado no experimento",
+      "description": "Valor confirmado dividido pela quantidade de propostas confirmadas dessa execução até o corte observado. Sem confirmações, fica sem dados.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((sre_experiment_confirmed_cents{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} / 100) / (sre_experiment_confirmed{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} > 0)) and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Ticket médio confirmado no experimento",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currency:financial:R$",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 33,
+      "type": "stat",
+      "title": "Início da execução — UTC",
+      "description": "Início inclusivo da janela de aceites do experimento fornecida no manifesto. Não é o início do período selecionado no Grafana.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1000 * sre_experiment_cohort_start_seconds{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"}",
+          "refId": "A",
+          "legendFormat": "Início da execução — UTC",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 34,
+      "type": "stat",
+      "title": "Fim da execução — UTC",
+      "description": "Fim exclusivo da janela de aceites do experimento fornecida no manifesto. As decisões podem ocorrer depois desse instante, até o corte observado.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "1000 * sre_experiment_cohort_end_seconds{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"}",
+          "refId": "A",
+          "legendFormat": "Fim da execução — UTC",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "A — aceite correto",
+      "description": "Denominador zero não produz razão. As metas e prazos vêm do manifesto do experimento.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"A\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "A — aceite correto",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "B — correto até 100 ms",
+      "description": "Denominador zero não produz razão. As metas e prazos vêm do manifesto do experimento.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 28,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"B_100ms\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "B — correto até 100 ms",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "B — correto até 200 ms",
+      "description": "Denominador zero não produz razão. As metas e prazos vêm do manifesto do experimento.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 28,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"B_200ms\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "B — correto até 200 ms",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "C — fast no prazo",
+      "description": "Denominador zero não produz razão. As metas e prazos vêm do manifesto do experimento.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"C_fast\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "C — fast no prazo",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "C — standard no prazo",
+      "description": "Denominador zero não produz razão. As metas e prazos vêm do manifesto do experimento.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 32,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"C_standard\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "C — standard no prazo",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "C — não roteadas no prazo",
+      "description": "Denominador zero não produz razão. As metas e prazos vêm do manifesto do experimento.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 32,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"C_unrouted\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "C — não roteadas no prazo",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "A — aceite correto × meta",
+      "description": "Snapshot do experimento ao longo das publicações, não uma janela móvel operacional.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"A\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "SLI observado",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_target{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"A\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "B",
+          "legendFormat": "Meta experimental",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "B — correto até 100 ms × meta",
+      "description": "Snapshot do experimento ao longo das publicações, não uma janela móvel operacional.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"B_100ms\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "SLI observado",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_target{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"B_100ms\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "B",
+          "legendFormat": "Meta experimental",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "B — correto até 200 ms × meta",
+      "description": "Snapshot do experimento ao longo das publicações, não uma janela móvel operacional.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"B_200ms\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "SLI observado",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_target{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"B_200ms\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "B",
+          "legendFormat": "Meta experimental",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "C — fast no prazo × meta",
+      "description": "Snapshot do experimento ao longo das publicações, não uma janela móvel operacional.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 43,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"C_fast\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "SLI observado",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_target{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"C_fast\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "B",
+          "legendFormat": "Meta experimental",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "C — standard no prazo × meta",
+      "description": "Snapshot do experimento ao longo das publicações, não uma janela móvel operacional.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"C_standard\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "SLI observado",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_target{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"C_standard\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "B",
+          "legendFormat": "Meta experimental",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "C — não roteadas no prazo × meta",
+      "description": "Snapshot do experimento ao longo das publicações, não uma janela móvel operacional.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 50,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"C_unrouted\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "SLI observado",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_target{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\",sli=\"C_unrouted\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "B",
+          "legendFormat": "Meta experimental",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Bons e ruins por indicador",
+      "description": "Contagens exatas da evidência fornecida, não rate de eventos do serviço.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_good{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "{{sli}} bons",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_bad{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "B",
+          "legendFormat": "{{sli}} ruins",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Consumo do orçamento por indicador",
+      "description": "1 equivale a 100% do orçamento experimental. Ausente se não houver denominador ou cobertura.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 57,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_indicator_budget_consumed_ratio{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "{{sli}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "Abertas com prazo vencido",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_overdue_open{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Abertas com prazo vencido",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 22,
+      "type": "stat",
+      "title": "Prazos ainda não vencidos",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 64,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sre_experiment_not_yet_due{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} and on(env,instance) (sre_experiment_coverage_complete{job=\"sre-experiment\",env=~\"$env\",instance=~\"$instance\"} == 1)",
+          "refId": "A",
+          "legendFormat": "Prazos ainda não vencidos",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 23,
+      "type": "text",
+      "title": "Integridade e limites",
+      "gridPos": {
+        "x": 0,
+        "y": 68,
+        "w": 24,
+        "h": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Decisão correta pode ser confirmação ou rejeição comercial fundamentada. Falha técnica e DLQ continuam abertas. Resultado tardio não apaga violação do prazo. A conciliação do relatório não comprova sozinha efeito financeiro único ou recuperação após reinício. O status do experimento não representa SLA externo."
+      }
+    }
+  ]
+}

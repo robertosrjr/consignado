@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "coverage": {"client": true, "inbox": true, "decisions": true},
+  "attempts": [
+    {"id": "a1", "canonicalId": "p1", "startedAt": "2026-10-17T12:00:00Z", "elapsedMillis": 50, "status": 202, "eligible": true, "exclusion": "none", "responseKind": "RECEIVED"},
+    {"id": "a2", "canonicalId": "p2", "startedAt": "2026-10-17T12:00:00Z", "elapsedMillis": 50, "status": 202, "eligible": true, "exclusion": "none", "responseKind": "RECEIVED"},
+    {"id": "a3", "canonicalId": "p3", "startedAt": "2026-10-17T12:00:00Z", "elapsedMillis": 50, "status": 202, "eligible": true, "exclusion": "none", "responseKind": "RECEIVED"}
+  ],
+  "acceptances": [
+    {"canonicalId": "p1", "receivedAt": "2026-10-17T12:00:00.010Z", "lane": "fast", "amountCents": 10000},
+    {"canonicalId": "p2", "receivedAt": "2026-10-17T12:00:00.010Z", "lane": "fast", "amountCents": 10000},
+    {"canonicalId": "p3", "receivedAt": "2026-10-17T12:00:00.010Z", "lane": "fast", "amountCents": 10000}
+  ],
+  "decisions": [
+    {"canonicalId": "p1", "decidedAt": "2026-10-17T12:00:30Z", "outcome": "confirmed"},
+    {"canonicalId": "p2", "decidedAt": "2026-10-17T12:03:00Z", "outcome": "confirmed"}
+  ]
+}

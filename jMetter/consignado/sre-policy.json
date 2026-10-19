@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "poc-v1-local",
+  "deadlineSeconds": { "fast": 120, "standard": 2700, "unrouted": 300 },
+  "targets": { "acceptance": 0.999, "fast": 0.95, "standard": 0.90, "unrouted": 0.95 }
+}

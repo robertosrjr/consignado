@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "poc-v1-fixture",
+  "start": "2026-10-17T12:00:00Z",
+  "end": "2026-10-17T12:01:00Z",
+  "asOf": "2026-10-17T13:00:00Z",
+  "expectedAttempts": 3,
+  "deadlineSeconds": {"fast": 120, "standard": 2700, "unrouted": 300},
+  "targets": {"acceptance": 0.999, "fast": 0.95, "standard": 0.90, "unrouted": 0.95}
+}

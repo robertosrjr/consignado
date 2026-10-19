@@ -1,0 +1,934 @@
+{
+  "uid": "consignado-sre-overview",
+  "title": "Consignado - SRE - Operacao",
+  "description": "Diagnóstico de confiabilidade usando métricas existentes; sem alegar SLO ponta a ponta.",
+  "tags": ["consignado","sre","operacao"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "label": "Ambiente",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(process_uptime_seconds, env)",
+          "refId": "v_env"
+        },
+        "definition": "label_values(process_uptime_seconds, env)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "Todos",
+          "value": "$__all"
+        },
+        "refresh": 2
+      },
+      {
+        "name": "instance",
+        "label": "Instância",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(process_uptime_seconds{env=~\"$env\"}, instance)",
+          "refId": "v_instance"
+        },
+        "definition": "label_values(process_uptime_seconds{env=~\"$env\"}, instance)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "text": "Todos",
+          "value": "$__all"
+        },
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Como ler este painel",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Diagnóstico operacional com métricas existentes. **HTTP 202 não comprova decisão no legado.** Percentis medidos no servidor e proporções dos finalizados não são os SLIs A/B/C do contrato. As metas são experimentais; não há SLA externo. Os gráficos de aplicação abaixo exigem push recente (<120 s). A verificação de frescor usa job/instância, pois push_time_seconds não possui env. Consulte também o painel **Consignado - SRE - Experimentos**."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "HTTP 202 observado — não é SLI A",
+      "description": "Percentual de chamadas em que a API respondeu HTTP 202: recebi a proposta. A confirmação no legado acontece depois. Inclui propostas novas e reenvios; não verifica elegibilidade ou persistência conciliada, por isso não representa o SLI A. Sem tráfego, não há percentual.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((sum((rate(http_server_requests_seconds_count{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\",status=\"202\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120)))) or on() (0 * (sum((rate(http_server_requests_seconds_count{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120)))))) / ((sum((rate(http_server_requests_seconds_count{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120)))) > 0)",
+          "refId": "A",
+          "legendFormat": "HTTP 202 observado — não é SLI A",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Latência p95 do servidor",
+      "description": "Tempo de resposta da API para aproximadamente 95% das chamadas. Exemplo: p95 de 100 ms significa que cerca de 95% responderam em até 100 ms; as demais foram mais lentas. É uma estimativa medida no servidor, sem o tempo completo de rede e cliente.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by(le) ((rate(http_server_requests_seconds_bucket{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120))))",
+          "refId": "A",
+          "legendFormat": "Latência p95 do servidor",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Latência p99 do servidor",
+      "description": "Tempo de resposta da API para aproximadamente 99% das chamadas. Exemplo: p99 de 200 ms significa que cerca de 99% responderam em até 200 ms; 1% foi mais lento. Ajuda a enxergar as chamadas mais lentas. É uma estimativa medida no servidor, sem o tempo completo de rede e cliente.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by(le) ((rate(http_server_requests_seconds_bucket{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120))))",
+          "refId": "A",
+          "legendFormat": "Latência p99 do servidor",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Idade do push mais antigo",
+      "description": "Há quantos segundos o serviço com o envio mais antigo deixou de atualizar suas métricas. Valores altos indicam dados desatualizados, não necessariamente queda da aplicação. Os gráficos de aplicação exigem envio com menos de 120 segundos. Esta verificação usa serviço e instância, sem filtro de ambiente; um serviço que nunca enviou métricas pode não aparecer.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "time() - min(push_time_seconds{job=~\"ingestion-api|worker|mock-legacy\",instance=~\"$instance\"})",
+          "refId": "A",
+          "legendFormat": "Idade do push mais antigo",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "POSTs por segundo e status",
+      "description": "Quantas chamadas de proposta chegam à API por segundo, separadas pelo código da resposta. HTTP 202 indica recebimento; 429 indica limite de requisições; 5xx indica falha no servidor. Use para acompanhar o tráfego gerado pelo JMeter e identificar mudanças nas respostas.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by(status) ((rate(http_server_requests_seconds_count{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120)))",
+          "refId": "A",
+          "legendFormat": "HTTP {{status}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Latência p95/p99 e referência de 100 ms",
+      "description": "Mostra como o tempo de resposta da API evolui: p95 cobre aproximadamente 95% das chamadas e p99 cobre 99%. A linha de 100 ms é uma referência visual. Valores acima dela indicam lentidão em relação a essa referência. O gráfico usa o tempo do servidor; o SLI B exige também aceite correto e duração observada no cliente.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by(le) ((rate(http_server_requests_seconds_bucket{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120))))",
+          "refId": "A",
+          "legendFormat": "p95 servidor",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by(le) ((rate(http_server_requests_seconds_bucket{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120))))",
+          "refId": "B",
+          "legendFormat": "p99 servidor",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "vector(0.1)",
+          "refId": "C",
+          "legendFormat": "Referência candidata 100 ms",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Aceites novos e duplicatas",
+      "description": "Quantidade por segundo de propostas novas aceitas e reenvios reconhecidos como duplicatas. Ajuda a separar demanda nova de tentativas repetidas. Uma duplicata aceita não representa um novo pedido nem deve somar novamente seu valor de negócio.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by(outcome) ((rate(ingestion_accepted_total{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120)))",
+          "refId": "A",
+          "legendFormat": "{{outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Profundidade amostrada por lane",
+      "description": "Quantidade amostrada de mensagens esperando nas filas fast e standard. Crescimento persistente sugere que o processamento não está acompanhando a entrada. Usa o maior valor entre réplicas que observam a mesma fila para evitar contá-la várias vezes. Não inclui automaticamente propostas ainda na Inbox ou na fila de mensagens com falha (DLQ).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 15,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by(lane) (worker_queue_depth{service=\"worker\",env=~\"$env\",instance=~\"$instance\"} and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120))",
+          "refId": "A",
+          "legendFormat": "{{lane}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Tempo até decisão — somente finalizados",
+      "description": "Entre as propostas que já terminaram, mostra qual percentual levou até 30, 60 ou 300 segundos desde o aceite até a decisão. Propostas ainda pendentes ou presas ficam fora deste gráfico; por isso ele não representa o SLI C da jornada completa. Sem propostas finalizadas, não há percentual.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum((rate(business_time_to_settle_seconds_bucket{service=\"worker\",env=~\"$env\",instance=~\"$instance\",le=~\"30|30[.]0\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120))) / (sum((rate(business_time_to_settle_seconds_count{service=\"worker\",env=~\"$env\",instance=~\"$instance\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120))) > 0)",
+          "refId": "A",
+          "legendFormat": "Até 30 s",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum((rate(business_time_to_settle_seconds_bucket{service=\"worker\",env=~\"$env\",instance=~\"$instance\",le=~\"60|60[.]0\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120))) / (sum((rate(business_time_to_settle_seconds_count{service=\"worker\",env=~\"$env\",instance=~\"$instance\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120))) > 0)",
+          "refId": "B",
+          "legendFormat": "Até 60 s",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum((rate(business_time_to_settle_seconds_bucket{service=\"worker\",env=~\"$env\",instance=~\"$instance\",le=~\"300|300[.]0\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120))) / (sum((rate(business_time_to_settle_seconds_count{service=\"worker\",env=~\"$env\",instance=~\"$instance\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120))) > 0)",
+          "refId": "C",
+          "legendFormat": "Até 300 s",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Fluxo: entrada nova e decisões",
+      "description": "Compara quantas propostas novas entram por segundo com quantas recebem uma decisão por segundo. Se a entrada permanecer maior que as decisões, pode haver acúmulo de pendências. As decisões podem corresponder a propostas recebidas antes do período exibido; a diferença entre as curvas não é o saldo exato de pedidos pendentes.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum((rate(business_vgv_received_brl_count{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120)))",
+          "refId": "A",
+          "legendFormat": "Novas aceitas",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by(outcome) ((rate(business_vgv_brl_count{service=\"worker\",env=~\"$env\",instance=~\"$instance\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120)))",
+          "refId": "B",
+          "legendFormat": "Finalizadas {{outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Erros 5xx observados",
+      "description": "Percentual das chamadas de proposta que terminaram com resposta HTTP 5xx, indicando falha no servidor. Crescimento sugere investigar a API e suas dependências. Mede respostas observadas pelo servidor, sem aplicar as regras de elegibilidade do contrato SRE. Sem tráfego, não há percentual.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((sum((rate(http_server_requests_seconds_count{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\",status=~\"5..\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120)))) or on() (0 * (sum((rate(http_server_requests_seconds_count{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120)))))) / ((sum((rate(http_server_requests_seconds_count{service=\"ingestion-api\",env=~\"$env\",instance=~\"$instance\",method=\"POST\",uri=\"/v1/proposals\"}[$__rate_interval]) and on(instance) ((time() - push_time_seconds{job=\"ingestion-api\",instance=~\"$instance\"}) < 120)))) > 0)",
+          "refId": "A",
+          "legendFormat": "Erros 5xx observados",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Circuit breaker por instância",
+      "description": "Estado da proteção das chamadas ao legado por instância: 0 = fechado, chamadas permitidas; 1 = semiaberto, testando recuperação; 2 = aberto, chamadas bloqueadas temporariamente após falhas. Se permanecer aberto com propostas aguardando, o processamento pode acumular pendências. Este estado ajuda no diagnóstico, mas sozinho não mede o cumprimento de um SLO.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 29,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "worker_legacy_circuit_state{service=\"worker\",env=~\"$env\",instance=~\"$instance\"} and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120)",
+          "refId": "A",
+          "legendFormat": "{{instance}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Concorrência usada e limite das instâncias",
+      "description": "Quantas operações o worker está executando simultaneamente, comparadas ao limite configurado das instâncias selecionadas. Uso próximo do limite por muito tempo, junto com filas crescendo, sugere saturação. Concorrência é quantidade de operações em andamento; não é quantidade de requisições por segundo.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(worker_in_flight{service=\"worker\",env=~\"$env\",instance=~\"$instance\"} and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120))",
+          "refId": "A",
+          "legendFormat": "Em processamento",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(worker_in_flight_max{service=\"worker\",env=~\"$env\",instance=~\"$instance\"} and on(instance) ((time() - push_time_seconds{job=\"worker\",instance=~\"$instance\"}) < 120))",
+          "refId": "B",
+          "legendFormat": "Soma dos limites selecionados",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Legado: janela, pico e referência de 180 TPS",
+      "description": "Quantidade de requisições admitidas pelo controle de capacidade do legado na janela de um segundo, maior pico observado e referência de 180 requisições por segundo (TPS). Ajuda a verificar a pressão sobre o legado. Não inclui todas as tentativas rejeitadas pelo controle. A linha de referência não comprova um teto global quando há múltiplas réplicas.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(legacy_request_throughput{service=\"mock-legacy\",env=~\"$env\",instance=~\"$instance\"} and on(instance) ((time() - push_time_seconds{job=\"mock-legacy\",instance=~\"$instance\"}) < 120))",
+          "refId": "A",
+          "legendFormat": "Admitidas na janela",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(legacy_peak_window{service=\"mock-legacy\",env=~\"$env\",instance=~\"$instance\"} and on(instance) ((time() - push_time_seconds{job=\"mock-legacy\",instance=~\"$instance\"}) < 120))",
+          "refId": "B",
+          "legendFormat": "Pico observado no processo",
+          "range": true,
+          "instant": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "vector(180)",
+          "refId": "C",
+          "legendFormat": "Referência 180 TPS",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "Sem dados",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "text",
+      "title": "O que ainda não está medido continuamente",
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 24,
+        "h": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Aceite durável por elegibilidade, tempo completo do cliente, idade desde o aceite, pendências vencidas e cobertura de DLQ/avaliador ainda dependem da integração de fontes e persistência. **Não inferir SLI C de confirmado/recebido ou de histogramas somente dos finalizados.** O relatório offline já calcula os SLIs de uma coorte fornecida; seu painel é separado."
+      }
+    }
+  ]
+}
