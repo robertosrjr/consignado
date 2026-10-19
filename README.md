@@ -3,6 +3,7 @@
 ![Java](https://img.shields.io/badge/Java-25_LTS-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
 ![Status](https://img.shields.io/badge/status-PoC_em_desenvolvimento-yellow)
+![SRE](https://img.shields.io/badge/SRE_PoC-concluida-2ea44f)
 
 Plataforma de ingestão assíncrona de propostas de crédito: aceita pedidos na borda e controla o envio ao legado, com filas prioritárias, idempotência e observabilidade.
 
@@ -28,6 +29,7 @@ Para encerrar, execute `.\scripts\local-down.ps1` na pasta `applications`.
 
 | Assunto | Guia |
 |---|---|
+| Fechamento da PoC de SRE | [Conclusão, evidências, limites e backlog](docs/sre/fechamento-poc-sre-observabilidade.md) |
 | Contexto de negócio e metas | [Contexto e objetivos](docs/narrativas/contexto-e-objetivos.md) |
 | Arquitetura, stack e decisões | [Visão técnica](docs/manuais/visao-tecnica.md) |
 | Build, módulos e testes | [Aplicações](applications/README.md) |
@@ -35,6 +37,7 @@ Para encerrar, execute `.\scripts\local-down.ps1` na pasta `applications`.
 | Jornada de um pedido | [Negócio](docs/jornadas/jornada-da-proposta.md) · [Fluxo técnico](docs/jornadas/jornada-entre-modulos.md) |
 | Integração HTTP | [Manual da API](docs/narrativas/manual-api-rest.md) |
 | Grafana e métricas de negócio | [Dashboards](applications/observability/grafana/dashboards/README.md) |
+| SRE, métricas, SLIs e SLOs | [Guia SRE e plano de implementação](docs/sre/README.md) |
 | EC2, Docker e Terraform | [Infraestrutura](infrastructure/README.md) |
 | Alertas e notificações | [Alertmanager → SNS → SQS](infrastructure/Configuration/observability/ALERTAS.md) |
 | Evolução da idempotência | [Business Fingerprint v2](docs/business-fingerprint-v2-implementacao.md) |

@@ -36,6 +36,58 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 
 class SqsLaneQueueAdapterTest {
+  @Test
+  void should_restore_each_message_context_inside_processing_thread_and_create_fresh_retry_spans()
+      throws Exception {
+    try (var sdk =
+        br.com.consignado.platform.telemetry.StandaloneTelemetry.create("test", Map.of())) {
+      br.com.consignado.platform.telemetry.Telemetry.configure(sdk);
+      String trace = "0123456789abcdef0123456789abcdef";
+      var attributes =
+          Map.of(
+              "traceparent",
+              software.amazon.awssdk.services.sqs.model.MessageAttributeValue.builder()
+                  .dataType("String")
+                  .stringValue("00-" + trace + "-0123456789abcdef-01")
+                  .build());
+      var messages = new ConcurrentLinkedDeque<Message>();
+      messages.add(
+          Message.builder()
+              .body(ProposalMessageCodec.toJson(message(Lane.FAST, 1)))
+              .receiptHandle("receipt")
+              .messageAttributes(attributes)
+              .build());
+      sqs.queues.put(FAST_URL, messages);
+      var queue = adapter();
+      await(() -> queue.hasMessages(Lane.FAST));
+      var queued = queue.poll(Lane.FAST).orElseThrow();
+      var spanIds = new ArrayList<String>();
+      try (var executor = java.util.concurrent.Executors.newSingleThreadExecutor()) {
+        for (int attempt = 0; attempt < 2; attempt++) {
+          executor
+              .submit(
+                  queued.processingTask(
+                      () -> {
+                        var context = io.opentelemetry.api.trace.Span.current().getSpanContext();
+                        assertThat(context.getTraceId()).isEqualTo(trace);
+                        assertThat(org.slf4j.MDC.get("traceId")).isEqualTo(trace);
+                        spanIds.add(context.getSpanId());
+                      }))
+              .get();
+        }
+        executor
+            .submit(
+                () ->
+                    assertThat(io.opentelemetry.api.trace.Span.current().getSpanContext().isValid())
+                        .isFalse())
+            .get();
+      }
+      assertThat(spanIds).doesNotHaveDuplicates();
+    } finally {
+      br.com.consignado.platform.telemetry.Telemetry.configure(
+          io.opentelemetry.api.OpenTelemetry.noop());
+    }
+  }
 
   private static final String FAST_URL = "http://sqs/fast";
   private static final String STANDARD_URL = "http://sqs/standard";

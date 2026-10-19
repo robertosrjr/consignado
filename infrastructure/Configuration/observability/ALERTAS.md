@@ -19,7 +19,7 @@ Os filtros HTTP sao `service="ingestion-api",method="POST",uri="/v1/proposals"`.
 Metricas HTTP sao agrupadas por env/service/instance, com resets tratados antes da soma.
 Erros, latencia e Worker exigem push recente (<120 s); snapshots antigos nao mantem
 alertas de negocio artificialmente ativos. Quando a coleta do gateway cai, PushMissing e
-suprimido pela propria expressao e ScrapeDown represenha o problema de telemetria.
+suprimido pela propria expressao e ScrapeDown representa o problema de telemetria.
 
 Os push_time_seconds nao carregam env: seu alerta preserva job/instance e deriva service
 do job. Ausencia total de um job identifica apenas o servico, sem inventar uma instancia.
@@ -58,6 +58,73 @@ ao topico acima. Com RawMessageDelivery=false (padrao), o JSON do Alertmanager v
 campo Message do envelope SNS; com true, ele ctega diretamente no corpo da mensagem.
 Essa assinatura e a entrega na fila precisam ser verificadas separadamente.
 
+As sete regras incluem `dashboard_path` nas annotations, com o caminho relativo do painel
+para investigacao no Grafana. Os alertas de API e worker tambem incluem `jaeger_service` e
+`jaeger_operation` para orientar a busca por traces no periodo do incidente. Esses campos
+seguem no JSON SNS existente, sem alterar seu schema ou criar labels por requisicao.
+`runbook` continua apontando para a secao correspondente deste documento. O consumidor
+deve resolver os caminhos relativos usando os enderecos atuais do Grafana e da documentacao.
+
+## Teste controlado de notificacao
+
+O [script de teste](../../../applications/scripts/test-alert-notification.ps1) prepara um
+alerta `ConsignadoNotificationTest`, com `env=validation`, `test=true` e `notification=sre`.
+Ele nao possui `action=trigger_agentic_loop`. O identificador da rodada fica na annotation
+`validation_id`, separado das labels. Usa a rota SNS existente; nao altera limiares, timers
+ou silencia alertas reais. Expira automaticamente em 180 s por padrao.
+
+A partir da raiz do repositorio, preparar sem enviar:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File applications/scripts/test-alert-notification.ps1 `
+  -AlertmanagerUrl 'http://<IP_ATUAL>:9093' `
+  -OutputDirectory applications/.local/alert-test-preparado-001 -PrepareOnly
+```
+
+Para enviar, executar novamente sem `-PrepareOnly`, com um diretorio novo. O script grava
+`alert.json` antes do envio e `receipt.json` apos o aceite HTTP. O diretorio deve ser novo
+para nao sobrescrever evidencias. **HTTP 200 comprova apenas entrada no Alertmanager**;
+nao comprova publicacao SNS, entrega SQS ou reconhecimento humano.
+
+Na configuracao atual, o primeiro envio aguarda `group_wait=30s`. A recuperacao pode esperar
+o proximo `group_interval=5m`, mesmo quando o alerta ja desapareceu da lista de ativos.
+Nao diminuir esses timers globais para acelerar o teste. Conferir a rota com amtool, os
+silencios/inibicoes, a lista de alertas e os contadores `alertmanager_notifications_total`
+e `alertmanager_notifications_failed_total`, filtrando `integration="sns"`. Incremento
+de tentativas sem falha reportada, com conclusao da integracao, evidencia o envio pelo
+Alertmanager; a verificacao no destino continua separada. Outros alertas simultaneos podem
+incrementar os mesmos contadores, portanto preservar a situacao inicial e o fingerprint.
+
+Este exercicio testa o canal de notificacao diretamente: nao prova que as sete condicoes
+de Prometheus foram acionadas por uma falha real. A deteccao e exercitada pelos testes de
+regras e, posteriormente, por cenarios controlados da aplicacao.
+
+### Evidencia de 17/10/2026
+
+- Sete regras ativas verificadas com `health=ok`; nenhuma condicao real estava disparada.
+- `promtool check rules`, `promtool check config` e os 14 cenarios / 98 verificacoes de
+  `promtool test rules` passaram, incluindo a versao com contexto de investigacao.
+- `amtool check-config` passou; rotas warning/critical de `notification=sre` apontaram
+  exclusivamente para `consignado-sns`, e um alerta sem rota apontou para `blackhole`.
+- O template foi renderizado e parseado como JSON com estados firing/resolved e
+  caracteres especiais; mantido schemaVersion 1.
+- Teste sintetico iniciado as 18:27:09, America/Sao_Paulo, com expiracao as 18:30:09.
+  Fingerprint `224ef3420b169a1d`; validation_id `0534c9fd-658f-4ee1-b543-a9580b19a9d3`.
+- As 18:32:56, os contadores da integracao SNS passaram de seis para oito tentativas,
+  com oito conclusoes e zero falhas. No intervalo, foi observado o alerta ativo e depois
+  sua ausencia; nenhuma regra real estava disparada. Isso evidencia o ciclo de disparo
+  e recuperacao pelo Alertmanager ate a publicacao SNS, sem confirmar recepcao no SQS.
+- A fila SQS e o reconhecimento pelo consumidor **nao foram inspecionados nesta rodada**,
+  por escolha do usuario. Nao ampliar o Instance Profile para consultar a fila apenas
+  para esse teste; eventual verificacao posterior deve usar credenciais apropriadas.
+- Aplicacoes e containers permaneceram em execucao. Nao foram alterados limiares,
+  tempos de agrupamento, receiver ou rota do orquestrador.
+
+Estado do teste e resultado ficam na EC2 em `~/observability/alert-cycle-20261017.json` e
+`~/observability/alert-cycle-result-20261017.json`. A configuracao anterior das regras foi
+guardada em `~/observability/alert-backups/20261017T212856Z/`. O helper PowerShell foi
+validado com parsing e `-PrepareOnly`; esse dry-run nao enviou uma segunda rodada.
+
 Estado da entrega: configuracao SNS ativada na EC2 apos associar o role
 consignado-observability-role e verificar IMDSv2 pela rede do container. Primeiro alerta
 sintetico publicado sem falhas de SNS. Conferir o resultado do teste de ciclo completo
@@ -93,7 +160,7 @@ nenhum teste de e-mail foi enviado enquanto destino/SMTP nao estiverem configura
 
 Testes fora da pasta rules, para nao serem carregados pelo wildcard de producao:
 
-```st
+```sh
 promtool check rules config/prometheus/rules/consignado-sre.yml
 promtool test rules config/prometheus/tests/consignado-sre.test.yml
 ```

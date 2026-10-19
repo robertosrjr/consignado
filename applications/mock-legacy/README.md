@@ -32,6 +32,8 @@ O `legacy_peak_window` importa porque o Prometheus raspa a cada 15 s: um pico de
 
 ## Configuração
 
+Para falhas temporárias sem reiniciar o mock, consultar a [preparação SRE do legado](../../docs/sre/preparacao-falhas-legado.md). O controle é desligado por padrão e exige perfil de experimento, flag explícita, token próprio e acesso loopback.
+
 | Variável | Padrão | Para quê |
 |---|---|---|
 | `LEGACY_API_KEY` | — (obrigatória) | o serviço não sobe sem ela |

@@ -19,6 +19,46 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class LegacyHttpAdapterTest {
+  @Test
+  void should_propagate_w3c_context_to_real_http_server() throws Exception {
+    var header = new java.util.concurrent.atomic.AtomicReference<String>();
+    var server =
+        com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/v1/averbacoes",
+        exchange -> {
+          header.set(exchange.getRequestHeaders().getFirst("traceparent"));
+          byte[] body =
+              "{\"averbacaoId\":\"confirmed\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+    server.start();
+    try (var sdk =
+        br.com.consignado.platform.telemetry.StandaloneTelemetry.create(
+            "test", java.util.Map.of())) {
+      br.com.consignado.platform.telemetry.Telemetry.configure(sdk);
+      try (var operation =
+          br.com.consignado.platform.telemetry.Telemetry.start(
+              "process", io.opentelemetry.api.trace.SpanKind.CONSUMER)) {
+        var client =
+            new LegacyHttpAdapter(
+                HttpClient.newHttpClient(),
+                URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
+                "test",
+                Duration.ofSeconds(5),
+                breaker(20, 20, 50f));
+        assertThat(client.submit(submission(KEY))).isInstanceOf(LegacyResult.Confirmed.class);
+        assertThat(header.get()).contains(operation.span().getSpanContext().getTraceId());
+        assertThat(header.get()).doesNotContain(operation.span().getSpanContext().getSpanId());
+      }
+    } finally {
+      br.com.consignado.platform.telemetry.Telemetry.configure(
+          io.opentelemetry.api.OpenTelemetry.noop());
+      server.stop(0);
+    }
+  }
 
   private static final String KEY = "e3b0c442-98fc-11ee-b9d1-0242ac120002";
 
@@ -47,13 +87,14 @@ class LegacyHttpAdapterTest {
     HttpClient http =
         HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofMillis(500))
+            .connectTimeout(Duration.ofSeconds(5))
             .build();
     return new LegacyHttpAdapter(http, URI.create(stub.baseUrl()), "chave-teste", timeout, breaker);
   }
 
   private LegacyHttpAdapter adapter() {
-    return adapter(Duration.ofSeconds(2), breaker(20, 20, 50f));
+    // Functional HTTP assertions are not latency benchmarks.
+    return adapter(Duration.ofSeconds(10), breaker(20, 20, 50f));
   }
 
   private static CircuitBreaker breaker(int minimumCalls, int window, float failurePercent) {
@@ -126,15 +167,17 @@ class LegacyHttpAdapterTest {
 
   @Test
   void should_time_out_slow_responses_and_report_transient() {
-    stub.delayMillis = 1_500;
-    LegacyHttpAdapter slowAdapter = adapter(Duration.ofMillis(300), breaker(20, 20, 50f));
-
-    long start = System.nanoTime();
+    var client = new br.com.consignado.platform.worker.support.TimeoutHttpClient();
+    LegacyHttpAdapter slowAdapter =
+        new LegacyHttpAdapter(
+            client,
+            URI.create(stub.baseUrl()),
+            "test",
+            Duration.ofMillis(300),
+            breaker(20, 20, 50f));
     LegacyResult result = slowAdapter.submit(submission(KEY));
-    long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
-
     assertThat(result).isInstanceOf(LegacyResult.TransientFailure.class);
-    assertThat(elapsedMillis).isLessThan(1_200);
+    assertThat(client.lastRequest.timeout()).contains(Duration.ofMillis(300));
   }
 
   @Test

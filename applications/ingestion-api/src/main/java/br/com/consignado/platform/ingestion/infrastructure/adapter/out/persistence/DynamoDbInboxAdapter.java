@@ -30,6 +30,21 @@ public final class DynamoDbInboxAdapter implements DurableInboxPort {
 
   @Override
   public InboxWriteResult putIfAbsent(InboxItem item) {
+    try (var operation =
+        br.com.consignado.platform.telemetry.Telemetry.start(
+            "put inbox", io.opentelemetry.api.trace.SpanKind.CLIENT)) {
+      operation.span().setAttribute("db.system.name", "aws.dynamodb");
+      operation.span().setAttribute("db.operation.name", "PutItem");
+      try {
+        return write(item);
+      } catch (RuntimeException e) {
+        operation.failed(e);
+        throw e;
+      }
+    }
+  }
+
+  private InboxWriteResult write(InboxItem item) {
     PutItemRequest request =
         PutItemRequest.builder()
             .tableName(tableName)
@@ -87,6 +102,8 @@ public final class DynamoDbInboxAdapter implements DurableInboxPort {
     attributes.put(InboxAttributes.CREATED_AT, n(Long.toString(item.createdAtEpochMillis())));
     attributes.put(InboxAttributes.TTL, n(Long.toString(item.ttlEpochSeconds())));
     attributes.put(InboxAttributes.TRACING_ID, s(item.tracingId()));
+    br.com.consignado.platform.telemetry.TraceContext.capture()
+        .forEach((name, value) -> attributes.put(name, s(value)));
     return attributes;
   }
 

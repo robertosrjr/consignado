@@ -13,6 +13,7 @@
 
   <modules>
     <module>shared</module>
+    <module>platform-telemetry</module>
     <module>platform-starter</module>
     <module>platform-aws</module>
     <module>mock-legacy</module>

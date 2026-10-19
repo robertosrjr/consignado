@@ -1,13 +1,13 @@
 ﻿# Diagnóstico de tracing: OpenTelemetry e Jaeger
 
-Revisão: 16/10/2026. O Jaeger está configurado para receber traces; a jornada distribuída da aplicação ainda não foi instrumentada e comprovada. Este guia descreve verificações, não evidência de uma funcionalidade pronta.
+Revisão: 17/10/2026. O Jaeger recebeu uma jornada real com API, Inbox, dispatcher local, worker, legado e retentativa no mesmo trace. São 13 spans com referências resolvidas; a primeira chamada ao legado falhou e a seguinte retornou HTTP 200. Evidência, limites e comandos: [guia de tracing](../../../docs/manuais/tracing-local.md).
 
 ## Estado atual
 
-- O starter define uma probabilidade de sampling, mas isso não instala um SDK, bridge ou exporter.
-- `SystemTracingIdAdapter` reutiliza o MDC quando disponível; caso contrário, gera UUID. Esse identificador não cria um span.
-- O dispatcher envia `tracingId` no SQS. O worker não restaura contexto W3C a partir desse atributo.
-- O cliente HTTP do legado não injeta `traceparent`/`tracestate`.
+- O starter usa a integração OpenTelemetry do Spring Boot; exportação HTTP OTLP é opcional e ativada por endpoint explícito.
+- `SystemTracingIdAdapter` gera UUID de correlação da aceitação, independente do trace OTel.
+- Inbox, Stream e SQS transportam `traceparent`/`tracestate`; o worker restaura o contexto por mensagem na thread de processamento.
+- O cliente HTTP JDK do legado tem span CLIENT e injeção W3C explícitos.
 - Ter constantes para esses headers ou ver serviços de teste no Jaeger não comprova propagação ponta a ponta.
 
 ## Verificar o backend
@@ -51,4 +51,7 @@ Não colocar CPF, payload, token ou segredo em atributos, eventos ou baggage. O 
 
 ## Obstáculos e pendências
 
-A instrumentação foi adiada a pedido do usuário; esta revisão não altera a aplicação nem liga a EC2. Faltam exportação, contexto entre fronteiras e teste da jornada completa. O Jaeger ter uma porta aberta não atende esses critérios.
+A conectividade/exportação OTLP e uma jornada real com retentativa foram verificadas no
+Jaeger em 17/10/2026. Permanecem os exercícios controlados de duplicidade, rejeição comercial
+e falhas, a correlação de logs de todos os serviços e a validação do runtime Lambda na AWS.
+O Jaeger ter uma porta aberta ou listar serviços isolados continua sem comprovar esses cenários.

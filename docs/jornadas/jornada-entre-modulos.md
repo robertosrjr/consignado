@@ -78,7 +78,7 @@ Para cada registro, o [DispatchService.java](../../applications/dispatcher-lambd
    | Valor ≥ limiar (padrão R$ 50.000,00) | 30 |
 
 3. Escolhe a lane (`LaneRouter`): escore ≥ 30 → `FAST`; caso contrário, `STANDARD`.
-4. Publica a `ProposalMessage` (chave, tenant, lane, escore) na fila da lane, enviando o identificador de correlação `tracingId` como atributo da mensagem; o contexto W3C completo ainda não é propagado.
+4. Publica a `ProposalMessage` (chave, tenant, lane, escore) na fila da lane, enviando o identificador de correlação `tracingId` e propagando `traceparent`/`tracestate` recuperados da Inbox nos atributos SQS.
 5. Atualiza o item do Inbox para `DISPATCHED` com o `priorityScore`.
 
 **Garantias:**
@@ -203,7 +203,7 @@ sequenceDiagram
 
     D->>L: Stream INSERT status RECEIVED
     L->>L: escore e lane, FAST se escore maior ou igual a 30
-    L->>Q: publish ProposalMessage com tracingId
+    L->>Q: publish ProposalMessage com tracingId e contexto W3C
     L->>D: status DISPATCHED e priorityScore
     alt falha ao publicar ou marcar
         L-->>D: batchItemFailures, o Stream repete o registro
@@ -253,7 +253,8 @@ Texto alternativo: o parceiro envia a proposta. A `ingestion-api` recusa com 401
 | Item do `DurableInbox` | `ingestion-api` → `dispatcher-lambda` e `worker` | `shared` (`InboxAttributes`) |
 | Payload cifrado | `ingestion-api` → `worker` | `shared` (`PayloadEnvelope`, `InboxPayloadCodec`); a chave precisa ser a mesma nos dois módulos |
 | `ProposalMessage` | `dispatcher-lambda` → `worker` | `shared` (`ProposalMessage`, `ProposalMessageCodec`) |
-| `tracingId` | API → Inbox → atributo SQS; não restaura contexto de span no worker | `SystemTracingIdAdapter`, `SqsQueuePublisher` |
+| `tracingId` | Correlação da aceitação, independente do trace OTel | `SystemTracingIdAdapter` |
+| `traceparent` / `tracestate` | HTTP → Inbox → Stream → SQS → worker → HTTP legado | [Tracing local](../manuais/tracing-local.md) |
 | Requisição de averbação | `worker` → `mock-legacy` | `LegacyHttpAdapter` / `AverbacaoRequest` |
 
 ---

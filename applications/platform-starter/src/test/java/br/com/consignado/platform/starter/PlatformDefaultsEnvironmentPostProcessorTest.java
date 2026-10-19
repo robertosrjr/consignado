@@ -9,6 +9,19 @@ import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
 class PlatformDefaultsEnvironmentPostProcessorTest {
+  @Test
+  void should_configure_otlp_only_when_explicitly_requested() {
+    StandardEnvironment env = new StandardEnvironment();
+    env.getPropertySources()
+        .addFirst(
+            new org.springframework.core.env.MapPropertySource(
+                "test",
+                Map.of("PLATFORM_OTLP_TRACES_ENDPOINT", "http://127.0.0.1:4318/v1/traces")));
+    new PlatformDefaultsEnvironmentPostProcessor()
+        .postProcessEnvironment(env, new SpringApplication());
+    assertThat(env.getProperty("management.opentelemetry.tracing.export.otlp.endpoint"))
+        .isEqualTo("http://127.0.0.1:4318/v1/traces");
+  }
 
   private final PlatformDefaultsEnvironmentPostProcessor processor =
       new PlatformDefaultsEnvironmentPostProcessor();

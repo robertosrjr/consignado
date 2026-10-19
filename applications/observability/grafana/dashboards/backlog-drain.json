@@ -2,11 +2,7 @@
   "uid": "consignado-backlog-drain",
   "title": "Consignado - Backlog e Drenagem",
   "description": "Filas por lane, crescimento liquido, tempo de drenagem e resultado de negocio.",
-  "tags": [
-    "consignado",
-    "poc",
-    "u7"
-  ],
+  "tags": ["consignado","aplicacao","filas"],
   "timezone": "browser",
   "refresh": "10s",
   "time": {
@@ -327,8 +323,8 @@
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Tempo ate a averbacao (SLO)",
-      "description": "business.time.to.settle: fracao concluida em ate 30 s / 1 min / 5 min.",
+      "title": "Tempo ate a decisao (somente finalizados)",
+      "description": "Fracao dos finalizados em ate 30 s / 1 min / 5 min. Nao inclui propostas presas, nao mede o SLI C e nao comprova averbacao real.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -345,7 +341,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(business_time_to_settle_seconds_bucket{service=\"worker\",instance=~\"$instance\",le=\"30.0\"}[5m])) / clamp_min(sum(rate(business_time_to_settle_seconds_count{service=\"worker\",instance=~\"$instance\"}[5m])), 1e-9)",
+          "expr": "sum(rate(business_time_to_settle_seconds_bucket{service=\"worker\",instance=~\"$instance\",le=\"30.0\"}[5m])) / (sum(rate(business_time_to_settle_seconds_count{service=\"worker\",instance=~\"$instance\"}[5m])) > 0)",
           "legendFormat": "<= 30 s",
           "refId": "A",
           "range": true
@@ -355,7 +351,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(business_time_to_settle_seconds_bucket{service=\"worker\",instance=~\"$instance\",le=\"60.0\"}[5m])) / clamp_min(sum(rate(business_time_to_settle_seconds_count{service=\"worker\",instance=~\"$instance\"}[5m])), 1e-9)",
+          "expr": "sum(rate(business_time_to_settle_seconds_bucket{service=\"worker\",instance=~\"$instance\",le=\"60.0\"}[5m])) / (sum(rate(business_time_to_settle_seconds_count{service=\"worker\",instance=~\"$instance\"}[5m])) > 0)",
           "legendFormat": "<= 1 min",
           "refId": "B",
           "range": true
@@ -365,7 +361,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(business_time_to_settle_seconds_bucket{service=\"worker\",instance=~\"$instance\",le=\"300.0\"}[5m])) / clamp_min(sum(rate(business_time_to_settle_seconds_count{service=\"worker\",instance=~\"$instance\"}[5m])), 1e-9)",
+          "expr": "sum(rate(business_time_to_settle_seconds_bucket{service=\"worker\",instance=~\"$instance\",le=\"300.0\"}[5m])) / (sum(rate(business_time_to_settle_seconds_count{service=\"worker\",instance=~\"$instance\"}[5m])) > 0)",
           "legendFormat": "<= 5 min",
           "refId": "C",
           "range": true
@@ -461,7 +457,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(business_first_pass_total{service=\"worker\",instance=~\"$instance\",result=\"first_attempt\"}) / clamp_min(sum(business_first_pass_total{service=\"worker\",instance=~\"$instance\"}), 1)",
+          "expr": "sum(business_first_pass_total{service=\"worker\",instance=~\"$instance\",result=\"first_attempt\"}) / (sum(business_first_pass_total{service=\"worker\",instance=~\"$instance\"}) > 0)",
           "legendFormat": "1a passagem",
           "refId": "A",
           "range": true

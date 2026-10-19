@@ -494,3 +494,72 @@
 **Context**: Operations - observabilidade no EC2.
 
 ---
+
+## Incremento AI-DLC de resiliencia SRE
+**Timestamp**: 2026-10-18T01:52:41Z
+**Data local**: 17/10/2026 (America/Sao_Paulo)
+**User Input**: "então faça esse plano utilizando o ia-dlc"
+**AI Response**: Planejamento brownfield concluido com profundidade Standard: workspace detection, engenharia reversa incremental, requisitos e workflow planning. Criados README, system-overview.md, api-and-dependencies.md, requirements.md e execution-plan.md em aidlc-docs/inception/sre-resilience/. Estado READY_FOR_REVIEW, sem aprovacao presumida. Proposta: R0 preparacao reversivel; R1 falhas do legado; R2 DLQ e redrive; R3 carga progressiva; R4 resposta a incidente. Atualizados aidlc-state.md e indices docs/sre/README.md e docs/README.md.
+**Rules and Skills**: CLAUDE.md; regras efetivas em .aidlc-lite-rule-details/ (caminhos .kiro/.amazonq do guia estao desatualizados); common/core-rules.md, common/question-format-guide.md e regras Inception de workspace detection, reverse engineering, requirements analysis e workflow planning. Skills locais sre-observability-skill e chaos-engineering. Fluxo textual utilizado, sem alegar validacao de renderizacao Mermaid.
+**Evidence and Limits**: Baseline por leitura de codigo, configuracao e documentos existentes; constatada possivel lacuna entre OPEN por 2 min no alerta e sondagem do circuito apos 10 s, alem de redrive apos 3 recebimentos. Essas lacunas serao testadas na Construction. Nenhum codigo, regra, JMX ou dashboard alterado nesta entrega; nenhum experimento, build, acesso AWS ou inicio do ambiente executado. Ultimo estado operacional documentado permanece desligado.
+**Context**: INCEPTION incremental - plano solicitado, implementacao futura.
+
+---
+
+## Construction SRE R0 - controle reversivel do legado
+**Timestamp**: 2026-10-18T02:12:49Z
+**Data local**: 17/10/2026 (America/Sao_Paulo)
+**User Input**: "seguimos o plano do ia-dlc então"
+**Steering Input**: "não ligue mais a ec2 hoje"
+**AI Response**: Continuidade do plano autorizada; desenho da unidade R0 registrado antes do codigo em construction/sre-r0/unit-design.md. Implementados LegacyFaultPolicy e FaultControlController no mock, expiracao monotônica limitada, perfil/flag explicitos, token e origem loopback; ledger preservado. local-up.ps1 recebeu opt-in SreFaultControl e criado sre-legacy-fault.ps1 com manifest sanitizado/PrepareOnly. Guia docs/sre/preparacao-falhas-legado.md e indices/estado do workflow atualizados. Proximo R1/L1, sem alegar execucao integrada.
+**Validation**: mvn -pl mock-legacy -am verify com cache Maven existente: BUILD SUCCESS, 139 testes sem falhas/erros (67 shared, 5 telemetry, 37 starter, 30 mock); gates Enforcer/Spotless/JaCoCo passaram. AST de 2 scripts valido; PrepareOnly executado sem rede; links documentais e whitespace conferidos. Ver construction/sre-r0/validation.md. Tentativas iniciais de cache/formato foram corrigidas sem enfraquecer checks.
+**Scope and Limits**: Nenhum acesso AWS, inicio da EC2/Docker, publicacao no Grafana/SNS ou teste com coorte real nesta entrega. Testes locais em contextos isolados, nao prova de alertas/Jaeger nem dos cenarios R1. Restricao de nao iniciar EC2 em 17/10/2026 registrada e respeitada. Sem commit/push.
+**Context**: CONSTRUCTION incremental - R0 implementado e validado localmente; R1-R4 pendentes.
+
+---
+
+## R1/L1 - ambiente iniciado e falha transitoria do legado
+**Timestamp**: 2026-10-18T13:56:26Z
+**Data local**: 18/10/2026 (America/Sao_Paulo)
+**User Input**: "pode ligar o ambiente e vamos testar" / "vamos testar"
+**Authorization and Scope**: Inicio explicitamente autorizado em 18/10; restricao de nao ligar EC2 em 17/10 mantida como historica. EC2 existente i-082b5f183d18a8d25 iniciada em sa-east-1; IP observado 18.228.193.162. Compose existente iniciado por SSH, sem alterar IAM/SG. Aplicacoes locais iniciadas com captura SRE/controle de falhas e novos endpoints. Nenhum segredo exibido/persistido pelo controle.
+**Implementation**: Criado test-legacy-transient.ps1, que deriva JMX isolado, ativa uma unica falha de ate 2 s antes da primeira proposta e restaura em finally. Tentativas 01/02 INCOMPLETE antes de propostas/falha por argumentos PowerShell e serializacao XML. Corrigidos argumentos em array, campos vazios e leitura compartilhada do snapshot no Windows. Primeira captura SRE INCOMPLETE por corte envelhecido durante startup do SDK; SreCaptureMain agora inicia o cliente antes de ler o snapshot, sem relaxar frescor.
+**Evidence**: Aquecimento separado de 1 nova/1 replay. L1 tentativa03: 5 novas/5 replays, dez HTTP202, cinco CONFIRMED, deltas mock=1 falha caos/5 efeitos unicos/0 replay legado, fast/standard/DLQ vazias. Controle neutro antes do restore. Jaeger: cinco jornadas com quatro servicos; uma 503->200 no trace 055f4ce43f63e70323abc640456e4a0d, 14 spans e zero referencias internas nao resolvidas. Outras quatro sem retry, 11 spans cada.
+**SLI Evidence**: capture-02 com cobertura completa, nenhuma inconsistencia, R$5000 recebidos/confirmados, zero abertas. Relatorio FAIL (CLI3) por latencia 9/10 sob 100 e 200ms; primeira314ms; metas95/99% preservadas. Coorte standard imatura para2700s. Snapshot publicado no grupo SRE existente env=local/instance=desktop-psq0nq3; Prometheus confirmou coverage=1, status=1, cut1792331499.
+**Validation**: Empacotamento dos servicos package -DskipTests verde (nao e suite completa). Apos correcao do coletor: SreCaptureTest/SreCaptureMainTest, sete testes sem falhas, BUILD SUCCESS; AST do helper e cinquenta leituras concorrentes do snapshot validos. Links e whitespace conferidos. Fontes: construction/sre-r1/unit-design.md, validation.md e docs/sre/exercicio-falha-legado-l1.md. Artefatos brutos em applications/.local/legacy-l1-20261018-03, ignorados pelo Git.
+**Limits**: R1 parcial, proximo L2. Nenhuma purga/reset/reinicio durante a coorte, alteracao de alerta ou teste sintetico SNS/SQS. Nao comprova circuito aberto, entrega de notificacao, exactly-once financeiro em producao ou SLA mensal. Ambiente deixado ativo para inspecao, falha restaurada; sem commit/push.
+
+---
+
+## Encerramento dos ambientes e EC2 apos pausa
+**Timestamp**: 2026-10-18T15:21:12Z
+**Data local**: 18/10/2026, encerramento verificado as 12:19 (America/Sao_Paulo)
+**User Input**: "pode desligar os ambinetes e a EC2 para evitar gastos"
+**Authentication Reply**: "Login concluído"
+**AI Response**: Quatro PIDs validados contra os JARs do workspace e encerrados com local-down.ps1: worker23736, ingestion19960, mock12276 e local-env14840. Verificado zero processos registrados restantes e pids.json ausente. Compose stop encerrou todos os containers; Docker, socket e containerd retornaram inactive. Sem remocao de volumes ou evidencias.
+**AWS Evidence**: A sessao expirada foi renovada pelo usuario. stop-instances aceito para i-082b5f183d18a8d25 em sa-east-1; waiter instance-stopped e describe confirmaram stopped as 15:19:22 UTC. Volume EBS permanece associado. Evidencias em applications/.local/shutdown-local-20261018.json e shutdown-ec2-20261018.json.
+**Workflow State**: Testes continuam pausados. Revisao/conciliacao final do L2 pendente; fonte bruta02 INCOMPLETE preservada e controle reconciliado preparado antes do encerramento. Sessao em memoria encerrada: retomar pelos artefatos offline, sem presumir continuidade depois de restart. Nenhum teste novo ou commit/push nesta etapa de encerramento.
+
+---
+
+## R1/L3 — retomada e validacao local
+**Timestamp**: 2026-10-18T19:09:45.7337885+00:00
+**User Input**: conseguimos Seguir para o L3: circuit breaker, verificando proteção, alertas e recuperação.
+**AI Response**: Skills SRE e Chaos aplicadas. Adicionado ensaio com20 identidades, HTTP real loopback, circuito e fila em memoria. Protecao OPEN, preservacao de recebimentos e recuperacao aprovadas. Suite focada inicial28 testes; teste final com espera automatica10s passou separadamente. promtool3.5.0 oficial com checksum conferido aprovou cinco cenarios/15 checks novos,14 cenarios/98 checks existentes e sete regras. Lacuna de deteccao confirmada: alternancia OPEN/HALF_OPEN com backlog/frescor nao completa for2m. Nenhuma regra, redrive ou aplicacao alterados; sem EC2, envio de propostas para aplicacao, notificacao SNS, commit ou push. R1 integrado e conciliacao offline L2 permanecem pendentes. Relato em docs/sre/exercicio-circuit-breaker-l3.md; desenho em construction/sre-r1/l3-design.md; artefatos em applications/.local/legacy-l3-20261018-local/.
+
+---
+
+## Fechamento da PoC de SRE e observabilidade
+**Timestamp**: 2026-10-18 (America/Sao_Paulo)
+
+**User Input**: "registre o fechamento e a conclusão dela, com esse relatório em um doc referenciado no edme raiz"
+
+**Decision**: PoC de SRE e observabilidade encerrada com objetivos centrais atingidos e limitacoes conhecidas. O encerramento nao homologa capacidade de producao, SLA externo, exactly-once financeiro, recuperacao apos crash, redrive de DLQ ou operacao humana do canal de alertas.
+
+**Evidence**: Metricas e dashboards versionados; contrato e relatorio conciliado; tracing local; sete regras SRE; exercicio real de pausa do worker; L1 recuperado com conciliacao; L2 preservado como INCOMPLETE; L3 local aprovado com lacuna OPEN/HALF_OPEN reproduzida por promtool.
+
+**Disposition**: L2 final, L3 integrado, R2-R4, durabilidade, carga, monitor externo e atendimento SQS reclassificados como backlog para um novo incremento. Ambiente permanece desligado e evidencias preservadas.
+
+**Artifact**: `docs/sre/fechamento-poc-sre-observabilidade.md`, referenciado no README raiz, no indice de documentacao e no guia SRE. Nenhum commit ou push executado.
+
+---

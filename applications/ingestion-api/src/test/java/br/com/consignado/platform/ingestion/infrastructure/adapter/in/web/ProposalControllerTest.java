@@ -49,6 +49,18 @@ class ProposalControllerTest {
   @Autowired MockMvc mvc;
   @Autowired MeterRegistry registry;
 
+  @Autowired io.opentelemetry.api.OpenTelemetry telemetry;
+
+  @Test
+  void should_configure_real_tracing_without_a_remote_collector() {
+    var span = telemetry.getTracer("test").spanBuilder("local-check").startSpan();
+    try {
+      assertThat(span.getSpanContext().isValid()).isTrue();
+    } finally {
+      span.end();
+    }
+  }
+
   private ResultActions post(String key, String tenantHeader, String tenantClaim, String body)
       throws Exception {
     MockHttpServletRequestBuilder request =

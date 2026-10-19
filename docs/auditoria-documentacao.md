@@ -1,5 +1,7 @@
 # Auditoria da documentação
 
+> **Registro histórico de 16/10/2026.** A revisão atual está em [Auditoria documental de 18/10/2026](auditoria-documentacao-2026-10-18.md). As contagens e pendências abaixo refletem o repositório naquele corte.
+
 Data: 16/10/2026. Revisão estática do repositório; aplicações e EC2 permaneceram desligadas. Não houve commit, publicação, apply de Terraform ou nova execução dos testes Java.
 
 ## Escopo e método

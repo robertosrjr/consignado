@@ -1,6 +1,7 @@
 package br.com.consignado.platform.legacy.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -25,6 +26,11 @@ class AverbacaoControllerTest {
 
   @Autowired MockMvc mvc;
   @Autowired MeterRegistry registry;
+
+  @Test
+  void fault_control_is_absent_by_default() throws Exception {
+    mvc.perform(get("/internal/sre/fault")).andExpect(status().isNotFound());
+  }
 
   private ResultActions call(String apiKey, String idempotencyKey, String body) throws Exception {
     var request = post("/v1/averbacoes").contentType(MediaType.APPLICATION_JSON).content(body);

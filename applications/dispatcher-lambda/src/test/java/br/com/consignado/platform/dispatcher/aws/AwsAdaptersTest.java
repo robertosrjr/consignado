@@ -23,6 +23,36 @@ import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
 
 class AwsAdaptersTest {
+  @Test
+  void should_publish_w3c_context_without_reusing_the_correlation_uuid_as_a_trace() {
+    try (var sdk =
+        br.com.consignado.platform.telemetry.StandaloneTelemetry.create(
+            "test", java.util.Map.of())) {
+      br.com.consignado.platform.telemetry.Telemetry.configure(sdk);
+      var sqs = new FakeSqs();
+      var publisher = new SqsQueuePublisher(sqs, "fast", "standard");
+      String traceId;
+      String parentSpan;
+      java.util.Map<String, String> context;
+      try (var root =
+          br.com.consignado.platform.telemetry.Telemetry.start(
+              "accept", io.opentelemetry.api.trace.SpanKind.SERVER)) {
+        traceId = root.span().getSpanContext().getTraceId();
+        parentSpan = root.span().getSpanContext().getSpanId();
+        context = br.com.consignado.platform.telemetry.TraceContext.capture();
+      }
+      publisher.publish(Lane.FAST, MESSAGE, "correlation-uuid", context);
+      var attributes = sqs.sent.getFirst().messageAttributes();
+      String traceparent = attributes.get("traceparent").stringValue();
+      assertThat(traceparent).contains(traceId).doesNotContain(parentSpan);
+      assertThat(attributes.get("tracingId").stringValue()).isEqualTo("correlation-uuid");
+      assertThat(attributes).doesNotContainKey("baggage");
+      assertThat(io.opentelemetry.api.trace.Span.current().getSpanContext().isValid()).isFalse();
+    } finally {
+      br.com.consignado.platform.telemetry.Telemetry.configure(
+          io.opentelemetry.api.OpenTelemetry.noop());
+    }
+  }
 
   private static final ProposalMessage MESSAGE =
       ProposalMessage.of(

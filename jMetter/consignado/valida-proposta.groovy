@@ -1,9 +1,20 @@
 import groovy.json.JsonSlurper
 
+// These fields describe the HTTP response only; the collector verifies the Inbox independently.
+vars.put('sre_canonical', '')
+vars.put('sre_response_kind', 'NONE')
+vars.put('sre_eligible', 'true')
+vars.put('sre_exclusion', 'none')
+props.get('sre_attempt_count')?.incrementAndGet()
+
 // Usar vars/props, nunca interpolacao ${...} dentro de scripts compilados.
 try {
     assert prev.getResponseCode() == '202': 'esperado HTTP 202; recebido ' + prev.getResponseCode()
     def body = new JsonSlurper().parseText(prev.getResponseDataAsString())
+    if (body.status in ['RECEIVED', 'DUPLICATE_ACCEPTED']) {
+        vars.put('sre_response_kind', body.status)
+        vars.put('sre_canonical', (body.proposalId ?: body.idempotencyKey ?: '').toString())
+    }
     assert vars.get('expected_status').split('[|]').contains(body.status): 'status inesperado: ' + body.status
     assert body.idempotencyKey == vars.get('key'): 'Idempotency-Key diferente da enviada'
     assert body.tracingId instanceof String && !body.tracingId.isBlank(): 'tracingId ausente'

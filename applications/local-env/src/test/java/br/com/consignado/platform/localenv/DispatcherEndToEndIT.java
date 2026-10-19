@@ -25,6 +25,22 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
  * escore e nada e republicado ao ler o Stream de novo.
  */
 class DispatcherEndToEndIT {
+  private static final String TRACE_ID = "0123456789abcdef0123456789abcdef";
+  private io.opentelemetry.sdk.OpenTelemetrySdk telemetry;
+
+  @org.junit.jupiter.api.BeforeEach
+  void configureTracing() {
+    telemetry =
+        br.com.consignado.platform.telemetry.StandaloneTelemetry.create("dispatcher-it", Map.of());
+    br.com.consignado.platform.telemetry.Telemetry.configure(telemetry);
+  }
+
+  @org.junit.jupiter.api.AfterEach
+  void closeTracing() {
+    br.com.consignado.platform.telemetry.Telemetry.configure(
+        io.opentelemetry.api.OpenTelemetry.noop());
+    telemetry.close();
+  }
 
   private static AttributeValue s(String value) {
     return AttributeValue.builder().s(value).build();
@@ -37,14 +53,26 @@ class DispatcherEndToEndIT {
             .tableName(InboxAttributes.TABLE_NAME)
             .item(
                 Map.of(
-                    InboxAttributes.IDEMPOTENCY_KEY, s(key),
-                    InboxAttributes.TENANT_ID, s(tenant),
-                    InboxAttributes.CONVENIO_TYPE, s("INSS"),
-                    InboxAttributes.PORTABILITY, AttributeValue.builder().bool(portability).build(),
-                    InboxAttributes.AMOUNT, AttributeValue.builder().n(amount).build(),
-                    InboxAttributes.PAYLOAD, s("payload-cifrado"),
-                    InboxAttributes.STATUS, s(InboxAttributes.STATUS_RECEIVED),
-                    InboxAttributes.TRACING_ID, s("trace-" + key.substring(0, 4))))
+                    InboxAttributes.IDEMPOTENCY_KEY,
+                    s(key),
+                    InboxAttributes.TENANT_ID,
+                    s(tenant),
+                    InboxAttributes.CONVENIO_TYPE,
+                    s("INSS"),
+                    InboxAttributes.PORTABILITY,
+                    AttributeValue.builder().bool(portability).build(),
+                    InboxAttributes.AMOUNT,
+                    AttributeValue.builder().n(amount).build(),
+                    InboxAttributes.PAYLOAD,
+                    s("payload-cifrado"),
+                    InboxAttributes.STATUS,
+                    s(InboxAttributes.STATUS_RECEIVED),
+                    InboxAttributes.TRACING_ID,
+                    s("trace-" + key.substring(0, 4)),
+                    "traceparent",
+                    s("00-" + TRACE_ID + "-0123456789abcdef-01"),
+                    "tracestate",
+                    s("vendor=value")))
             .build());
   }
 
@@ -61,6 +89,15 @@ class DispatcherEndToEndIT {
                       .build())
               .messages();
       all.addAll(batch);
+      // Acknowledge consumed messages so the no-republish assertion is independent of visibility
+      // time.
+      for (Message message : batch) {
+        sqs.deleteMessage(
+            software.amazon.awssdk.services.sqs.model.DeleteMessageRequest.builder()
+                .queueUrl(url)
+                .receiptHandle(message.receiptHandle())
+                .build());
+      }
     }
     return all;
   }
@@ -111,6 +148,16 @@ class DispatcherEndToEndIT {
         assertThat(fast.get(0).messageAttributes().get("tracingId").stringValue())
             .startsWith("trace-");
         assertThat(fast.get(0).body()).doesNotContain("payload-cifrado").doesNotContain("1000");
+
+        for (Message message :
+            java.util.stream.Stream.concat(fast.stream(), standard.stream()).toList()) {
+          String parent = message.messageAttributes().get("traceparent").stringValue();
+          assertThat(parent).startsWith("00-" + TRACE_ID + "-");
+          assertThat(parent).isNotEqualTo("00-" + TRACE_ID + "-0123456789abcdef-01");
+          assertThat(message.messageAttributes().get("tracestate").stringValue())
+              .isEqualTo("vendor=value");
+          assertThat(message.messageAttributes()).doesNotContainKey("baggage");
+        }
 
         for (String key : List.of(portabilityKey, vipKey, standardKey)) {
           Map<String, AttributeValue> item =

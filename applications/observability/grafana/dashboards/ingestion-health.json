@@ -2,11 +2,7 @@
   "uid": "consignado-ingestion-health",
   "title": "Consignado - Saude da Ingestao",
   "description": "Borda de absorcao (ingestion-api): vazao, latencia, respostas e protecoes (cota e duplicatas).",
-  "tags": [
-    "consignado",
-    "poc",
-    "u7"
-  ],
+  "tags": ["consignado","aplicacao","ingestao"],
   "timezone": "browser",
   "refresh": "10s",
   "time": {

@@ -14,6 +14,7 @@ groups:
           summary: "Coleta de metricas indisponivel"
           description: "Um alvo esta DOWN ha 2 minutos. Conferir lastError em /targets, rede, logs e formato das metricas. DOWN nao comprova que a aplicacao parou."
           runbook: "ALERTAS.md#consignadoscrapedown"
+          dashboard_path: "/d/consignado-sre-overview/consignado-sre-operacao"
 
       - alert: ConsignadoPushMissing
         expr: |
@@ -34,6 +35,7 @@ groups:
           summary: "Aplicacao sem envio recente de metricas"
           description: "Pushgateway esta acessivel, mas falta um servico esperado ou seu ultimo push passou de 120s, sustentado por 1 minuto. Conferir processo, exportador e rede. Em testes locais, silenciar durante paradas planejadas."
           runbook: "ALERTAS.md#consignadopushmissing"
+          dashboard_path: "/d/consignado-sre-overview/consignado-sre-operacao"
 
       - alert: ConsignadoIngestionErrors
         expr: |
@@ -53,6 +55,9 @@ groups:
           summary: "Erros 5xx elevados na entrada de propostas"
           description: "Mais de 5% de erros 5xx na janela de 5 minutos, com ao menos 100 requisicoes, por 5 minutos. Conferir inbox_unavailable, DynamoDB e timeouts. Repeticoes devem preservar Idempotency-Key."
           runbook: "ALERTAS.md#consignadoingestionerrors"
+          dashboard_path: "/d/consignado-ingestion-health/consignado-saude-da-ingestao"
+          jaeger_service: "ingestion-api"
+          jaeger_operation: "http post /v1/proposals"
 
       - alert: ConsignadoIngestionLatency
         expr: |
@@ -71,6 +76,9 @@ groups:
           summary: "Latencia p95 elevada na entrada de propostas"
           description: "p95 acima de 500ms por 10 minutos, com ao menos 100 requisicoes por janela de 5 minutos. Conferir banco, aquecimento, recursos e traces. Nao aumentar timeouts sem diagnostico."
           runbook: "ALERTAS.md#consignadoingestionlatency"
+          dashboard_path: "/d/consignado-ingestion-health/consignado-saude-da-ingestao"
+          jaeger_service: "ingestion-api"
+          jaeger_operation: "http post /v1/proposals"
 
       - alert: ConsignadoWorkerStalled
         expr: |
@@ -87,6 +95,9 @@ groups:
           summary: "Fila com mensagens sem conclusoes no Worker"
           description: "Ha mensagens na fila e a taxa de conclusao e zero ha 5 minutos. Conferir consumidores, permissao SQS, legado e circuit breaker. Profundidade e taxa sao amostras aproximadas."
           runbook: "ALERTAS.md#consignadoworkerstalled"
+          dashboard_path: "/d/consignado-backlog-drain/consignado-backlog-e-drenagem"
+          jaeger_service: "worker"
+          jaeger_operation: "process proposal"
 
       - alert: ConsignadoBacklogDelayed
         expr: |
@@ -103,6 +114,9 @@ groups:
           summary: "Estimativa de drenagem do backlog elevada"
           description: "Estimativa acima de 5 minutos por 10 minutos, com fila pendente. Sem processamento a estimativa pode ser infinita. Nao equivale a idade da mensagem nem inclui previsao de novas chegadas."
           runbook: "ALERTAS.md#consignadobacklogdelayed"
+          dashboard_path: "/d/consignado-backlog-drain/consignado-backlog-e-drenagem"
+          jaeger_service: "worker"
+          jaeger_operation: "process proposal"
 
       - alert: ConsignadoLegacyUnavailable
         expr: |
@@ -119,3 +133,6 @@ groups:
           summary: "Circuit breaker do legado aberto com trabalho pendente"
           description: "Circuit breaker no estado 2 (aberto) ha 2 minutos, com mensagens na fila. Conferir disponibilidade, capacidade e latencia do legado antes de reiniciar consumidores."
           runbook: "ALERTAS.md#consignadolegacyunavailable"
+          dashboard_path: "/d/consignado-downstream-protection/consignado-protecao-downstream"
+          jaeger_service: "worker"
+          jaeger_operation: "POST /v1/averbacoes"

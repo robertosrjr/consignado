@@ -17,9 +17,12 @@ public class PlatformDefaultsEnvironmentPostProcessor implements EnvironmentPost
 
   @Override
   public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication app) {
-    environment
-        .getPropertySources()
-        .addLast(new MapPropertySource(PROPERTY_SOURCE_NAME, defaults()));
+    Map<String, Object> settings = defaults();
+    String endpoint = environment.getProperty("PLATFORM_OTLP_TRACES_ENDPOINT");
+    if (endpoint != null && !endpoint.isBlank()) {
+      settings.put("management.opentelemetry.tracing.export.otlp.endpoint", endpoint);
+    }
+    environment.getPropertySources().addLast(new MapPropertySource(PROPERTY_SOURCE_NAME, settings));
   }
 
   static Map<String, Object> defaults() {

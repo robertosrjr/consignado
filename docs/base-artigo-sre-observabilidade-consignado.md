@@ -1,5 +1,7 @@
 # Base factual para artigo: SRE, observabilidade e métricas na plataforma de consignado
 
+> **Nota de atualização — 18/10/2026:** este documento nasceu como fotografia de uma etapa anterior. Depois desse corte, a jornada local `ingestion-api → dispatcher → worker → mock-legacy` foi observada no Jaeger. Isso comprova o caminho local exercitado, mas não valida o runtime Lambda/AWS nem todos os caminhos de erro. Para o estado final da PoC, use também o [relatório de fechamento](sre/fechamento-poc-sre-observabilidade.md) e o [guia de tracing local](manuais/tracing-local.md).
+
 **Data de referência:** 16 de outubro de 2026, America/Sao_Paulo.  
 **Natureza:** documento de apoio técnico e editorial; não é o artigo final.  
 **Escopo:** aplicação Java de crédito consignado, ambiente local de testes e stack de observabilidade em EC2.  
@@ -66,8 +68,8 @@ No ambiente local, DynamoDB Local, ElasticMQ, emissor JWT e dispatcher são disp
 | Logs estruturados JSON/ECS | Configurados no starter comum; registros reais inspecionados |
 | Sanitização de dados pessoais em logs | Implementada como proteção adicional; não equivale a certificação de conformidade |
 | Backend de traces Jaeger | Implantado, com OTLP e armazenamento Badger configurados |
-| Serviços no Jaeger | Consulta retornou `jaeger` e `teste-conectividade`; isso não demonstra spans das três aplicações |
-| Tracing distribuído completo da proposta | Não comprovado; exportador, bridge e propagação precisam de validação específica |
+| Serviços no Jaeger | Na preparação inicial apareceram apenas `jaeger` e `teste-conectividade`; uma rodada posterior comprovou a jornada local de quatro serviços |
+| Tracing distribuído da proposta | Comprovado no caminho local exercitado; runtime Lambda/AWS e demais caminhos permanecem sem validação completa |
 | Sete alertas SRE | Publicados e avaliados pelo Prometheus, sem erros de regra na consulta realizada |
 | Testes das regras | 14 cenários simulados, com 98 verificações, aprovados no `promtool` |
 | Alertmanager → SNS | Testes de disparo e recuperação publicados sem falhas de integração |
@@ -944,4 +946,4 @@ As consultas originais deste documento registram evidências históricas. Depois
 
 O dashboard de negócio passou a exibir valores monetários completos com duas casas decimais. Confirmados são comparados a recebidos (quantidade, valor e ticket): menor fica laranja; igual ou maior, verde. A comparação arredonda na precisão exibida. A diferença pode refletir rejeições e janelas de recebimento/finalização distintas, e não equivale a backlog ou conciliação financeira. Configuração atual: [README dos dashboards](../applications/observability/grafana/dashboards/README.md).
 
-Business Fingerprint v2 foi acrescentado ao código como opt-in, com flag desligada e provisionamento AWS pendente; consultar [implementação](business-fingerprint-v2-implementacao.md). Tracing completo permanece pendente.
+Business Fingerprint v2 foi acrescentado ao código como opt-in, com flag desligada e provisionamento AWS pendente; consultar [implementação](business-fingerprint-v2-implementacao.md). O tracing local de quatro serviços foi comprovado posteriormente; runtime Lambda/AWS e cobertura integral permanecem pendentes.

@@ -23,6 +23,10 @@ public final class LocalEnvMain {
   private LocalEnvMain() {}
 
   public static void main(String[] args) throws Exception {
+    var telemetry =
+        br.com.consignado.platform.telemetry.StandaloneTelemetry.create(
+            "dispatcher-local", System.getenv());
+    br.com.consignado.platform.telemetry.Telemetry.configure(telemetry);
     int dynamoPort = port("LOCAL_ENV_DYNAMODB_PORT", 8000);
     int sqsPort = port("LOCAL_ENV_SQS_PORT", 9324);
     int tokenPort = port("LOCAL_ENV_TOKEN_PORT", 8082);
@@ -63,6 +67,7 @@ public final class LocalEnvMain {
                   } catch (Exception e) {
                     // encerramento: ignora
                   } finally {
+                    telemetry.close();
                     stop.countDown();
                   }
                 }));

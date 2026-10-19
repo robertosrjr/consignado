@@ -5,13 +5,19 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 Push-Location $repoRoot
 try {
-    $files = @(rg --files -g '*.md' -g '!**/target/**' -g '!**/.local/**' -g '!**/resultados/**')
+    $files = @(rg --files --hidden -g '*.md' -g '!**/.git/**' -g '!**/target/**' -g '!**/.local/**' -g '!**/resultados/**')
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao listar documentos com rg.' }
     $issues = @()
     foreach ($file in $files) {
         $full = Join-Path $repoRoot $file
         $lines = [IO.File]::ReadAllLines($full)
+        $insideFence = $false
         for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^\s*(```|~~~)') {
+                $insideFence = -not $insideFence
+                continue
+            }
+            if ($insideFence) { continue }
             foreach ($match in [regex]::Matches($lines[$i], '\]\(([^\s\)]+)(?:\s+"[^"]*")?\)')) {
                 $target = $match.Groups[1].Value.Trim('<', '>')
                 if ($target -match '^(https?://|mailto:|app:|#)') { continue }

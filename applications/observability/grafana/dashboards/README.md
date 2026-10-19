@@ -1,5 +1,8 @@
 # Dashboards Grafana
 
+Visao consolidada de confiabilidade: [README SRE](../../../../docs/sre/README.md).
+Evolucao planejada: [plano de implementacao](../../../../docs/sre/plano-implementacao.md).
+
 Paineis sobre as metricas Micrometer dos servicos Java:
 
 | Arquivo | Painel | Servicos |
@@ -8,9 +11,28 @@ Paineis sobre as metricas Micrometer dos servicos Java:
 | `downstream-protection.json` | Protecao Downstream: teto de 180 TPS, lanes 70/30, circuit breaker, em voo, duplicadas | worker, mock-legacy |
 | `backlog-drain.json` | Backlog e Drenagem: filas por lane, chegada x processamento, drenagem, SLO, VGV | worker |
 | `business-overview.json` | Negocio: propostas novas, confirmadas/rejeitadas, valores e ticket medio no periodo | ingestion-api, worker |
+| `sre-overview.json` | SRE - Operacao: HTTP, frescor, filas, finalizados, circuito, concorrencia e legado | ingestion-api, worker, mock-legacy |
+| `sre-experiments.json` | SRE - Experimentos: SLIs A/B/C, metas, cobertura, orcamento e pendencias do ultimo relatorio | job `sre-experiment` |
 
 Fonte de dados: Prometheus com `uid: prometheus`. Os filtros usam a tag `service` (comum a todas as
 metricas, ver `platform-starter`) e a variavel `$instance`.
+
+## Tags para localizar dashboards
+
+Todos usam `consignado`. As tags de assunto sao:
+
+| Painel | Tags adicionais |
+|---|---|
+| Negocio | `negocio` |
+| Saude da Ingestao | `aplicacao`, `ingestao` |
+| Protecao Downstream | `aplicacao`, `resiliencia` |
+| Backlog e Drenagem | `aplicacao`, `filas` |
+| SRE - Operacao | `sre`, `operacao` |
+| SRE - Experimentos | `sre`, `experimentos` |
+
+As tags antigas `poc` e `u7` foram removidas para facilitar a busca por assunto. Os paineis
+tecnicos atuais descrevem a aplicacao e seu processamento; `infra` fica reservado para uma
+futura visao de hosts, containers, rede e armazenamento.
 
 ## Como as metricas chegam ao Prometheus
 
@@ -28,6 +50,32 @@ metricas, ver `platform-starter`) e a variavel `$instance`.
 
 Os JSON versionados sao a fonte de verdade. Editar os arquivos e publica-los no provisionamento;
 alteracoes pela interface nao sao persistidas (`allowUiUpdates: false`).
+
+## Paineis SRE criados localmente
+
+Os dois novos paineis integram os seis dashboards sincronizados na EC2 em 17/10/2026:
+
+- `consignado-sre-overview`: diagnostico com metricas existentes, filtros de ambiente/instancia e
+  push recente para sinais de aplicacao. HTTP 202 observado nao e aceite duravel conciliado.
+- `consignado-sre-experiments`: gauges do ultimo relatorio publicado explicitamente, com um
+  ambiente/origem por vez. Sem fonte ou denominador, mostra sem dados; cobertura incompleta
+  suprime razoes. Distingue pass, fail, incomplete, observing e no-events. Nao e SLA mensal.
+  Inclui totais conciliados de negocio: quantidades, valores em reais, tickets e janela da
+  execucao. Valores sao gauges em centavos convertidos na consulta, sem `increase()`;
+  atualizar a tela mantem o snapshot ate outra publicacao explicita.
+
+O avaliador gera `report.prom` junto com JSON/Markdown. O envio ao Pushgateway e opcional, via
+`applications/scripts/sre-report-push.ps1`, com job fixo `sre-experiment` e grupos limitados por
+ambiente/origem. Nenhum dado sintetico foi enviado. Ver [relatorio local](../../../../docs/sre/relatorio-local.md).
+
+O painel de backlog foi renomeado para indicar **somente finalizados**. Suas proporcoes e a
+primeira passagem deixam de preencher denominador zero artificialmente. Os seis JSON foram
+copiados para a pasta do provider ativo, preservando backup fora dela. A API do Grafana confirmou
+os UIDs e o datasource `prometheus`; 108 expressoes foram validadas no Prometheus com filtros da
+instancia local. O snapshot real de tres propostas foi publicado com cobertura completa e falha
+de latencia; nao foi substituido por fixture saudavel. A [captura local opt-in](../../../../docs/sre/captura-local.md) integra JMeter,
+Inbox e worker para experimentos isolados. Projecao duravel e captura operacional continua
+permanecem pendentes; coletar localmente nao publica o relatorio.
 
 ## Indicadores de negocio
 

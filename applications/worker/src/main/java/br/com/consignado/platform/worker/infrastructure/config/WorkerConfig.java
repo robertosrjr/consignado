@@ -53,6 +53,16 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 @Configuration(proxyBeanMethods = false)
 public class WorkerConfig {
 
+  @Bean(destroyMethod = "close")
+  @ConditionalOnProperty(name = "worker.sre.capture-file")
+  br.com.consignado.platform.worker.infrastructure.metrics.SreSnapshotExporter sreSnapshotExporter(
+      InMemoryProposalRepository repository, org.springframework.core.env.Environment environment)
+      throws Exception {
+    return new br.com.consignado.platform.worker.infrastructure.metrics.SreSnapshotExporter(
+        repository,
+        java.nio.file.Path.of(environment.getRequiredProperty("worker.sre.capture-file")));
+  }
+
   @Bean
   Clock clock() {
     return Clock.systemUTC();

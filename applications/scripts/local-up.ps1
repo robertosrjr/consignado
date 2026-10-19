@@ -13,6 +13,12 @@
 .PARAMETER PushgatewayAddress
   host:porta de um Pushgateway. O ultimo valor utilizado fica em .local\observability.json.
   Sem parametro explicito, reutiliza esse valor; informe -PushgatewayAddress '' para desligar.
+.PARAMETER OtlpTracesEndpoint
+  URL OTLP HTTP de traces. Parametro explicito prevalece sobre a variavel
+  PLATFORM_OTLP_TRACES_ENDPOINT e o ultimo endereco salvo. Informe '' para desligar.
+.PARAMETER SreFaultControl
+  Habilita o controle temporario de falhas somente no mock. Exige
+  LEGACY_FAULT_CONTROL_TOKEN com ao menos 32 caracteres; nao persiste nem imprime esse token.
 #>
 [CmdletBinding()]
 param(
@@ -20,22 +26,49 @@ param(
     # Heap fixo da ingestion-api (Xms = Xmx): sem redimensionamento durante o pico
     [string]$IngestionHeap = '1g',
     [string]$PushgatewayAddress = '',
+    [string]$OtlpTracesEndpoint = '',
     # Emulador local durante startup/compilacao; nao altera os defaults de producao.
     [string]$DynamoApiCallTimeout = '3s',
-    [string]$DynamoApiCallAttemptTimeout = '1s'
+    [string]$DynamoApiCallAttemptTimeout = '1s',
+    [switch]$SreCapture,
+    [switch]$SreFaultControl
 )
 
 $ErrorActionPreference = 'Stop'
+$sreLegacyArgs = @()
+if ($SreFaultControl) {
+    if ([string]::IsNullOrWhiteSpace($env:LEGACY_FAULT_CONTROL_TOKEN) -or $env:LEGACY_FAULT_CONTROL_TOKEN.Length -lt 32) {
+        throw 'SreFaultControl exige LEGACY_FAULT_CONTROL_TOKEN com ao menos 32 caracteres.'
+    }
+    $sreLegacyArgs = @('--spring.profiles.active=sre-experiment', '--legacy.fault-control.enabled=true')
+} else {
+    $sreLegacyArgs = @('--legacy.fault-control.enabled=false')
+}
 $root = Split-Path -Parent $PSScriptRoot
 $state = Join-Path $root '.local'
 $logs = Join-Path $state 'logs'
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
+$sreWorkerArgs = @()
+if ($SreCapture) {
+    $sreDirectory = Join-Path $state 'sre'
+    [void][IO.Directory]::CreateDirectory($sreDirectory)
+    $sreWorkerArgs = @('-Dworker.sre.capture-file="' + (Join-Path $sreDirectory 'worker-snapshot.json') + '"')
+}
 
 $observabilityConfig = Join-Path $state 'observability.json'
 if (-not $PSBoundParameters.ContainsKey('PushgatewayAddress') -and (Test-Path $observabilityConfig)) {
     $savedObservability = Get-Content $observabilityConfig -Raw | ConvertFrom-Json
     $PushgatewayAddress = [string]$savedObservability.pushgatewayAddress
 }
+if (-not $PSBoundParameters.ContainsKey('OtlpTracesEndpoint')) {
+    if (-not [string]::IsNullOrWhiteSpace($env:PLATFORM_OTLP_TRACES_ENDPOINT)) {
+        $OtlpTracesEndpoint = [string]$env:PLATFORM_OTLP_TRACES_ENDPOINT
+    } elseif (Test-Path $observabilityConfig) {
+        $savedObservability = Get-Content $observabilityConfig -Raw | ConvertFrom-Json
+        $OtlpTracesEndpoint = [string]$savedObservability.otlpTracesEndpoint
+    }
+}
+$env:PLATFORM_OTLP_TRACES_ENDPOINT = $OtlpTracesEndpoint
 
 if (Test-Path (Join-Path $state 'pids.json')) {
     throw "Ja existe uma execucao registrada em .local\pids.json. Rode scripts\local-down.ps1 antes."
@@ -129,7 +162,7 @@ try {
     Start-Java -Name 'mock-legacy' -EnvVars ($pushEnv + @{
         SERVER_PORT = '8081'; LEGACY_API_KEY = $legacyApiKey; LEGACY_CAPACITY_TPS = "$LegacyCapacityTps"
         LEGACY_API_DOCS_ENABLED = 'true'
-    }) -JavaArgs @('-jar', $jars.legacy)
+    }) -JavaArgs (@('-jar', $jars.legacy) + $sreLegacyArgs)
     Wait-Port 8081 'mock-legacy'
 
     # 3) ingestion-api
@@ -155,13 +188,13 @@ try {
         WORKER_PAYLOAD_LOCAL_KEY = $payloadKey
         WORKER_QUEUE_FAST_URL = "$sqsUrl/000000000000/sqs-fast-lane-queue"
         WORKER_QUEUE_STANDARD_URL = "$sqsUrl/000000000000/sqs-standard-lane-queue"
-    }) -JavaArgs @('-jar', $jars.worker)
+    }) -JavaArgs ($sreWorkerArgs + @('-jar', $jars.worker))
 
     Wait-Port 8080 'ingestion-api'
     Wait-Port 8083 'worker'
 
     $procs | ConvertTo-Json | Set-Content -Path (Join-Path $state 'pids.json') -Encoding utf8
-    @{ pushgatewayAddress = $PushgatewayAddress } | ConvertTo-Json |
+    @{ pushgatewayAddress = $PushgatewayAddress; otlpTracesEndpoint = $OtlpTracesEndpoint } | ConvertTo-Json |
         Set-Content -Path $observabilityConfig -Encoding utf8
     Write-Host ''
     Write-Host 'PoC no ar:'
@@ -169,6 +202,7 @@ try {
     Write-Host '  Mock legacy    http://127.0.0.1:8081   Swagger: http://127.0.0.1:8081/swagger-ui.html'
     Write-Host '  Worker         http://127.0.0.1:8083/actuator/prometheus'
     if ($PushgatewayAddress) { Write-Host "  Pushgateway    http://$PushgatewayAddress (envio a cada 10 s)" }
+    if ($OtlpTracesEndpoint) { Write-Host "  OTLP traces    $OtlpTracesEndpoint" }
     Write-Host "  Token JWT      $issuer/token?tenant=banco-a"
     Write-Host "  Chave do legado (para o Swagger do mock): $legacyApiKey"
     Write-Host '  Encerrar: scripts\local-down.ps1'

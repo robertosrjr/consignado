@@ -1,13 +1,13 @@
 ﻿# Infraestrutura da PoC
 
-Revisão: 16/10/2026. A stack de observabilidade roda em Docker Compose na EC2; as aplicações de teste podem rodar como processos Java na estação local.
+Revisão: 18/10/2026. A stack de observabilidade roda em Docker Compose na EC2; as aplicações de teste podem rodar como processos Java na estação local.
 
 ## Stack de observabilidade
 
 - Variante usada na EC2: [compose.sem-elasticsearch.yaml](Configuration/observability/compose.sem-elasticsearch.yaml).
 - Serviços: Prometheus, Pushgateway, Grafana, Alertmanager e Jaeger com armazenamento Badger.
 - [Regras SRE e notificações](Configuration/observability/ALERTAS.md): Alertmanager → SNS → SQS. A rota legada de webhook permanece separada.
-- [Diagnóstico de tracing](Configuration/observability/TRACING_TROUBLESHOOTING.md): backend preparado; tracing completo da aplicação pendente.
+- [Diagnóstico de tracing](Configuration/observability/TRACING_TROUBLESHOOTING.md): jornada local de quatro serviços validada; runtime Lambda/AWS e caminhos adicionais ainda exigem validação.
 - [Dashboards versionados](../applications/observability/grafana/dashboards/README.md).
 
 A variante [compose.yaml](Configuration/observability/compose.yaml) inclui Elasticsearch e não deve ser confundida com a variante ativa sem Elasticsearch. Na EC2, informar explicitamente o arquivo de Compose.
@@ -30,4 +30,4 @@ A configuração de um recurso em Terraform não demonstra que ele já existe na
 
 ## Obstáculos e pendências
 
-Tracing distribuído, validação operacional do datasource CloudWatch e conclusão da adoção pelo Terraform continuam pendentes. Segredos ficam fora do Git; não incluir senhas de Grafana ou chaves AWS na documentação.
+A validação do tracing no runtime Lambda/AWS, a validação operacional do datasource CloudWatch e a conclusão da adoção pelo Terraform continuam pendentes. Segredos ficam fora do Git; não incluir senhas de Grafana ou chaves AWS na documentação.

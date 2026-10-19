@@ -50,6 +50,12 @@ o wrapper ja faz isso. Negocio admite somente uma thread. O veredito cobre a ent
 
 ## Conferir no Grafana
 
+Para reconciliar uma execucao sem depender do Grafana, ver a [captura SRE](../../docs/sre/captura-local.md).
+Iniciar a aplicacao com `local-up.ps1 -SreCapture` e o wrapper com `-SreCapture` gera controle,
+JTL enriquecido e resumo independente. O coletor le a Inbox local e o snapshot do worker;
+nao presume que 202 e confirmacao. `-SreFingerprint` resolve aliases quando a API ja estiver
+configurada em v2; nao ativa a funcionalidade.
+
 1. Deixe a aplicacao enviar metricas por ao menos 30 s antes do teste.
 2. Execute somente Negocio, sem outro trafego no mesmo ambiente/instancia.
 3. Abra `Consignado - Negocio`, filtrando ambiente local, sua instancia, convenio inss e

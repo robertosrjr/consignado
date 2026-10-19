@@ -24,6 +24,25 @@ import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionChe
 
 /** Mapeamento do adaptador contra um cliente falso (a semantica real e verificada nos *IT). */
 class DynamoDbInboxAdapterTest {
+  @Test
+  void should_persist_w3c_context_without_including_baggage_or_payload_in_context() {
+    try (var sdk =
+        br.com.consignado.platform.telemetry.StandaloneTelemetry.create("test", Map.of())) {
+      br.com.consignado.platform.telemetry.Telemetry.configure(sdk);
+      try (var root =
+          br.com.consignado.platform.telemetry.Telemetry.start(
+              "accept", io.opentelemetry.api.trace.SpanKind.SERVER)) {
+        adapter.putIfAbsent(item());
+        String carrier = dynamo.last.item().get("traceparent").s();
+        assertThat(carrier).contains(root.span().getSpanContext().getTraceId());
+        assertThat(carrier).doesNotContain(root.span().getSpanContext().getSpanId());
+        assertThat(dynamo.last.item()).doesNotContainKey("baggage");
+      }
+    } finally {
+      br.com.consignado.platform.telemetry.Telemetry.configure(
+          io.opentelemetry.api.OpenTelemetry.noop());
+    }
+  }
 
   /** Cliente falso: grava a ultima requisicao e simula sucesso, duplicidade ou falha. */
   private static final class FakeDynamo implements DynamoDbClient {

@@ -104,4 +104,8 @@ Dois merecem destaque: `BudgetSimulationTest` prova que nenhuma janela de 1 s pa
 
 ## Arquitetura
 
+Para experimentos SRE locais, `scripts/local-up.ps1 -SreCapture` habilita um snapshot de estados
+via propriedade `worker.sre.capture-file`, sem endpoint público. A exportação fica desativada
+por padrão e não torna o repositório durável. Ver [captura e limites](../../docs/sre/captura-local.md).
+
 Hexagonal, com o orçamento e a máquina de estados no `domain` — sem Spring e sem SQS. É o que permite provar o comportamento de vazão por simulação, sem subir infraestrutura.

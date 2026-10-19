@@ -2,11 +2,7 @@
   "uid": "consignado-downstream-protection",
   "title": "Consignado - Protecao Downstream",
   "description": "Worker e legado: teto de 180 TPS, divisao 70/30 por lane, circuit breaker e saturacao.",
-  "tags": [
-    "consignado",
-    "poc",
-    "u7"
-  ],
+  "tags": ["consignado","aplicacao","resiliencia"],
   "timezone": "browser",
   "refresh": "10s",
   "time": {

@@ -1,5 +1,7 @@
 # local-env
 
+Ferramenta offline adicional: [relatório local SRE](../../docs/sre/relatorio-local.md), com contrato de medição, fixtures e saída JSON/Markdown. A CLI não inicia os emuladores ou a aplicação.
+
 Ferramenta de desenvolvimento. Sobe, **em uma única JVM e sem Docker**, tudo de que a PoC depende: DynamoDB Local, uma fila compatível com SQS, um emissor de JWT e o acionador do Dispatcher.
 
 > **Não é implantado.** É dependência de desenvolvimento e de teste de integração; nenhum ambiente real usa este módulo.
@@ -44,6 +46,10 @@ O DynamoDB Local usa SQLite via JNI. O build copia as bibliotecas nativas para `
 Os emuladores exigem credenciais quaisquer para o SDK funcionar; usa-se `test`/`test`. É exceção documentada de ambiente local — **nunca** aponte este módulo para a AWS real.
 
 ## Testes
+
+Para reconciliar um experimento JMeter com a Inbox local e o snapshot do worker, consultar a
+[captura SRE local](../../docs/sre/captura-local.md). O coletor usa somente o DynamoDB em
+`127.0.0.1:8000`, valida a sessão dos processos e gera relatório sem publicação remota.
 
 ```bash
 mvn -pl local-env verify -Pintegration

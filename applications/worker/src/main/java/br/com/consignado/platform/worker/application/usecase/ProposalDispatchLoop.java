@@ -136,7 +136,7 @@ public final class ProposalDispatchLoop {
       budget.consume(pick.get());
       QueuedMessage message = polled.get();
       observer.dispatched(message.lane());
-      executor.execute(() -> handle(message));
+      executor.execute(message.processingTask(() -> handle(message)));
       started = true;
       return true;
     } finally {
@@ -172,6 +172,7 @@ public final class ProposalDispatchLoop {
         queue.release(message, backoff.delay(message.receiveCount()));
       }
     } catch (RuntimeException e) {
+      message.processingFailed(e);
       observer.failed(message.lane());
       LOG.log(
           Level.ERROR,

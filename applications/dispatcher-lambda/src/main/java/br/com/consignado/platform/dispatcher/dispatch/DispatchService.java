@@ -56,8 +56,12 @@ public final class DispatchService {
 
     int score = scorer.score(attributes);
     Lane lane = router.route(score);
-    publisher.publish(lane, ProposalMessage.of(key, tenant, lane, score), record.tracingId());
-    inbox.markDispatched(key, score);
+    publisher.publish(
+        lane,
+        ProposalMessage.of(key, tenant, lane, score),
+        record.tracingId(),
+        record.traceContext());
+    inbox.markDispatched(key, score, lane);
     return DispatchOutcome.dispatched(lane);
   }
 

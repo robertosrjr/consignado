@@ -15,6 +15,8 @@
   <description>Auto-configuracao Spring Boot comum: logs ECS, Actuator minimo, metricas, erros e hardening</description>
 
   <dependencies>
+    <dependency><groupId>${project.groupId}</groupId><artifactId>platform-telemetry</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-opentelemetry</artifactId></dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>shared</artifactId>

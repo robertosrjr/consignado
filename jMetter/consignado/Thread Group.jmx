@@ -42,6 +42,7 @@
     Math.multiplyExact(amount.movePointRight(2).longValueExact(), (long) requests)
     assert props.getProperty(&apos;business_convenio&apos;,&apos;INSS&apos;) in [&apos;INSS&apos;,&apos;ESOCIAL_CLT&apos;,&apos;SIAPE_PUBLICO&apos;]: &apos;convenio invalido&apos;
     assert props.getProperty(&apos;business_portability&apos;,&apos;false&apos;) in [&apos;true&apos;,&apos;false&apos;]: &apos;portabilidade invalida&apos;
+    props.put(&apos;sre_attempt_count&apos;, new java.util.concurrent.atomic.AtomicLong())
     props.put(&apos;storm_key&apos;, UUID.randomUUID().toString())
     for (String name : [&apos;storm_received&apos;,&apos;storm_duplicate&apos;,&apos;business_received&apos;,&apos;business_duplicates&apos;]) props.put(name, new java.util.concurrent.atomic.AtomicInteger())
     props.put(&apos;business_cents&apos;, new java.util.concurrent.atomic.AtomicLong())
@@ -154,7 +155,7 @@ if (prev.getResponseCode() != &apos;200&apos; || !token || token == &apos;TOKEN_
         </collectionProp>
       </HeaderManager>
       <hashTree/>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="01 Fumaca">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="01 Fumaca" enabled="true">
         <stringProp name="ThreadGroup.num_threads">${__P(smoke_threads,1)}</stringProp>
         <intProp name="ThreadGroup.ramp_time">1</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
@@ -256,7 +257,7 @@ if (prev.getResponseCode() != &apos;200&apos; || !token || token == &apos;TOKEN_
           <hashTree/>
         </hashTree>
       </hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="03 Tempestade de duplicatas (mesma chave)">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="03 Tempestade de duplicatas (mesma chave)" enabled="true">
         <stringProp name="ThreadGroup.num_threads">${__P(storm_threads,0)}</stringProp>
         <intProp name="ThreadGroup.ramp_time">1</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
@@ -324,7 +325,7 @@ vars.put(&apos;business_case&apos;, &apos;false&apos;)</stringProp>
           <hashTree/>
         </hashTree>
       </hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="04 Negocio controlado e replay">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="04 Negocio controlado e replay" enabled="true">
         <stringProp name="ThreadGroup.num_threads">${__P(business_threads,0)}</stringProp>
         <intProp name="ThreadGroup.ramp_time">1</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
@@ -443,7 +444,11 @@ log.info(&apos;RESULTADO_CONTROLADO &apos; + text)
 SampleResult.setResponseData(text, &apos;UTF-8&apos;)
 SampleResult.setResponseCode(ok ? &apos;200&apos; : &apos;500&apos;)
 SampleResult.setResponseMessage(ok ? &apos;Contagens e valores conferem na entrada&apos; : &apos;Divergencia nas contagens ou valores; ver log&apos;)
-SampleResult.setSuccessful(ok)</stringProp>
+SampleResult.setSuccessful(ok)
+String captureFile = props.getProperty(&apos;sre_summary_file&apos;, &apos;&apos;)
+if (captureFile) {
+    new File(captureFile).setText(JsonOutput.toJson([schemaVersion:1,attempts:props.get(&apos;sre_attempt_count&apos;).get(),completed:true]), &apos;UTF-8&apos;)
+}</stringProp>
         </JSR223Sampler>
         <hashTree/>
       </hashTree>
