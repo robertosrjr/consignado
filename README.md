@@ -4,6 +4,16 @@
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
 ![Status](https://img.shields.io/badge/status-PoC_em_desenvolvimento-yellow)
 ![SRE](https://img.shields.io/badge/SRE_PoC-concluida-2ea44f)
+![Maven](https://img.shields.io/badge/Maven-3.9+-C71A36?logo=apachemaven&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-DynamoDB_|_SQS-FF9900?logo=amazonwebservices&logoColor=white)
+![Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC?logo=terraform&logoColor=white)
+![Micrometer](https://img.shields.io/badge/metricas-Micrometer-1f6feb)
+![BIAN](https://img.shields.io/badge/BIAN-v14.0-0a4d8c)
+![TOGAF](https://img.shields.io/badge/TOGAF-servicos_e_ofertas-5c2d91)
+![LGPD](https://img.shields.io/badge/LGPD-conformidade-009c3b)
+[![Deploy](https://github.com/robertosrjr/consignado/actions/workflows/deploy.yml/badge.svg)](https://github.com/robertosrjr/consignado/actions/workflows/deploy.yml)
+[![Governance](https://github.com/robertosrjr/consignado/actions/workflows/governance.yml/badge.svg)](https://github.com/robertosrjr/consignado/actions/workflows/governance.yml)
+![Last commit](https://img.shields.io/github/last-commit/robertosrjr/consignado)
 
 Plataforma de ingestão assíncrona de propostas de crédito: aceita pedidos na borda e controla o envio ao legado, com filas prioritárias, idempotência e observabilidade.
 
