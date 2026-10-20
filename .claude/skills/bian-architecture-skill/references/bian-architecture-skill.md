@@ -226,7 +226,7 @@ Ao consultar um SD, comece pelo *Service Domain Overview Diagram* no portal e na
 |---|---|
 | `architecture-guidance` | SD = bounded context; CR = aggregate root; regras de dependência |
 | `api-design-guidance` | API física e OpenAPI, com extensões `x-bian-*` |
-| `service-modeling-skill` | Business Service e Service Offer (TAGF) agrupam SDs; um SD não é uma oferta |
+| `service-modeling-skill` | Business Service e Service Offer (TOGAF) agrupam SDs; um SD não é uma oferta |
 | `lgpd-sre-compliance-skill` | Dados pessoais nos payloads BOM (Party, Customer) |
 | `resilience-checker-skill` | Service Exchanges síncronos entre SDs e com o legado |
 | `tech-documentation-skill` | ADR para desvios do padrão e extensões locais |

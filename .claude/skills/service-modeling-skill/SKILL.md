@@ -3,11 +3,11 @@ name: service-modeling-skill
 description: "Use when modeling TOGAF Business Architecture services: differentiating Business Service ('what') from Service Offer ('how it is consumed'), mapping value streams, or structuring a business-architecture response with service/offer/risk sections."
 ---
 
-# Service Modeling (TAGF)
+# Service Modeling (TOGAF)
 
 ## Scope
 
-Use this skill to model and differentiate Business Services from Service Offers under the TAGF business-architecture framework. It is a business-modeling skill, not a technical implementation guide.
+Use this skill to model and differentiate Business Services from Service Offers under the TOGAF business-architecture framework. It is a business-modeling skill, not a technical implementation guide.
 
 ## Workflow
 
