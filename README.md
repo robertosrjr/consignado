@@ -31,6 +31,8 @@ Para encerrar, execute `.\scripts\local-down.ps1` na pasta `applications`.
 |---|---|
 | Fechamento da PoC de SRE | [Conclusão, evidências, limites e backlog](docs/sre/fechamento-poc-sre-observabilidade.md) |
 | Contexto de negócio e metas | [Contexto e objetivos](docs/narrativas/contexto-e-objetivos.md) |
+| Alinhamento ao BIAN v14.0 | [Service Domains, cenário e lacunas](docs/narrativas/alinhamento-bian.md) |
+| Serviços de negócio e ofertas (TAGF) | [Modelagem de serviços e ofertas](docs/narrativas/modelagem-servicos-e-ofertas.md) |
 | Arquitetura, stack e decisões | [Visão técnica](docs/manuais/visao-tecnica.md) |
 | Build, módulos e testes | [Aplicações](applications/README.md) |
 | Ambiente local e envio de métricas | [Ambiente local](docs/manuais/ambiente-local.md) |

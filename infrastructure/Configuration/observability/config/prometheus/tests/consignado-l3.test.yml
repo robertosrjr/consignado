@@ -1,0 +1,254 @@
+{
+    "tests":  [
+                  {
+                      "interval":  "5s",
+                      "name":  "L3-intermittent",
+                      "input_series":  [
+                                           {
+                                               "values":  "2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2 2 1 2",
+                                               "series":  "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           },
+                                           {
+                                               "values":  "20+0x61",
+                                               "series":  "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           },
+                                           {
+                                               "values":  "0+5x61",
+                                               "series":  "push_time_seconds{job=\"worker\",instance=\"l3-test\"}"
+                                           }
+                                       ],
+                      "promql_expr_test":  [
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "1m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "3m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "4m"
+                                               }
+                                           ]
+                  },
+                  {
+                      "interval":  "5s",
+                      "name":  "L3-sustained",
+                      "input_series":  [
+                                           {
+                                               "values":  "2+0x36 0+0x24",
+                                               "series":  "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           },
+                                           {
+                                               "values":  "20+0x61",
+                                               "series":  "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           },
+                                           {
+                                               "values":  "0+5x61",
+                                               "series":  "push_time_seconds{job=\"worker\",instance=\"l3-test\"}"
+                                           }
+                                       ],
+                      "promql_expr_test":  [
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "1m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  1,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "3m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "4m"
+                                               }
+                                           ]
+                  },
+                  {
+                      "interval":  "5s",
+                      "name":  "L3-no-backlog",
+                      "input_series":  [
+                                           {
+                                               "values":  "2+0x36 0+0x24",
+                                               "series":  "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           },
+                                           {
+                                               "values":  "0+0x61",
+                                               "series":  "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           },
+                                           {
+                                               "values":  "0+5x61",
+                                               "series":  "push_time_seconds{job=\"worker\",instance=\"l3-test\"}"
+                                           }
+                                       ],
+                      "promql_expr_test":  [
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "1m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "3m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "4m"
+                                               }
+                                           ]
+                  },
+                  {
+                      "interval":  "5s",
+                      "name":  "L3-stale",
+                      "input_series":  [
+                                           {
+                                               "values":  "2+0x36 0+0x24",
+                                               "series":  "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           },
+                                           {
+                                               "values":  "20+0x61",
+                                               "series":  "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           },
+                                           {
+                                               "values":  "0+0x61",
+                                               "series":  "push_time_seconds{job=\"worker\",instance=\"l3-test\"}"
+                                           }
+                                       ],
+                      "promql_expr_test":  [
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "1m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "3m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "4m"
+                                               }
+                                           ]
+                  },
+                  {
+                      "interval":  "5s",
+                      "name":  "L3-missing-push",
+                      "input_series":  [
+                                           {
+                                               "values":  "2+0x36 0+0x24",
+                                               "series":  "worker_legacy_circuit_state{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           },
+                                           {
+                                               "values":  "20+0x61",
+                                               "series":  "worker_queue_depth{env=\"local\",service=\"worker\",instance=\"l3-test\"}"
+                                           }
+                                       ],
+                      "promql_expr_test":  [
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "1m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "3m"
+                                               },
+                                               {
+                                                   "exp_samples":  [
+                                                                       {
+                                                                           "value":  0,
+                                                                           "labels":  "{}"
+                                                                       }
+                                                                   ],
+                                                   "expr":  "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
+                                                   "eval_time":  "4m"
+                                               }
+                                           ]
+                  }
+              ],
+    "rule_files":  [
+                       "../rules/consignado-sre.yml"
+                   ],
+    "evaluation_interval":  "5s"
+}

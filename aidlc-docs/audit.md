@@ -563,3 +563,11 @@
 **Artifact**: `docs/sre/fechamento-poc-sre-observabilidade.md`, referenciado no README raiz, no indice de documentacao e no guia SRE. Nenhum commit ou push executado.
 
 ---
+
+## Marcadores de capturas no artigo final de SRE
+**Timestamp**: 2026-10-19T10:33:42-03:00
+**User Input**: "vc sabe qual foi o artigo  que vc publicou e onde eu quer que eu coloque as imagens?" / "é nesse artigo aqui \"artigo-o-seu-sre-mostra-o-que-v2\" a versão finalque vc publicou"
+**AI Response**: Confirmado `docs/sre/artigo-o-seu-sre-mostra-o-que-v2.md` como o artigo final existente no repositório; esclarecido que não houve publicação externa. Inseridos marcadores Markdown para capturas do resultado L1, backlog e recuperação do worker, painel de negócio, teste L3, lacuna OPEN/HALF_OPEN e trace Jaeger. Os caminhos e nomes exatos foram indicados no próprio artigo, sob `docs/sre/imagens/artigo-o-seu-sre-mostra-o-que-v2/`.
+**Context**: Atualização documental solicitada para que o usuário salve as imagens nos locais indicados e o artigo as exiba.
+
+---
