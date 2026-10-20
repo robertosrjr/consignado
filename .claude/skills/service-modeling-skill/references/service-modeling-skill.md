@@ -1,10 +1,10 @@
-# Skill: Modelagem de Serviços e Ofertas na Arquitetura de Negócios (TAGF)
+# Skill: Modelagem de Serviços e Ofertas na Arquitetura de Negócios (TOGAF)
 
-Este documento de habilidade instrui o agente sobre como mapear, documentar, analisar e diferenciar **Serviços de Negócio (Business Services)** e **Ofertas de Serviço (Service Offers)** com base no framework TAGF.
+Este documento de habilidade instrui o agente sobre como mapear, documentar, analisar e diferenciar **Serviços de Negócio (Business Services)** e **Ofertas de Serviço (Service Offers)** com base no framework TOGAF.
 
 ---
 
-## 1. Fundamentação Conceitual (TAGF Core)
+## 1. Fundamentação Conceitual (TOGAF Core)
 
 Na Arquitetura de Negócios da organização, Serviço de Negócio e Oferta de Serviço ajudam a modelar o fluxo e a entrega de valor, porém atuando em níveis diferentes de abstração e consumo:
 

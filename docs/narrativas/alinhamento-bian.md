@@ -2,7 +2,7 @@
 
 Mapeamento da PoC de crédito consignado para a arquitetura de referência **BIAN v14.0**, feito com a skill `bian-architecture-skill`. Nomes de Service Domain (SD) seguem o [catálogo v14](../../.claude/skills/bian-architecture-skill/references/service-landscape-v14.md). O que não foi conferido no [portal oficial](https://bian.org/servicelandscape-14-0-0/) está marcado como **hipótese de trabalho**.
 
-Documentos relacionados: [modelagem de serviços e ofertas (TAGF)](modelagem-servicos-e-ofertas.md) e [visão técnica](../manuais/visao-tecnica.md).
+Documentos relacionados: [modelagem de serviços e ofertas (TOGAF)](modelagem-servicos-e-ofertas.md) e [visão técnica](../manuais/visao-tecnica.md).
 
 ---
 
@@ -41,7 +41,7 @@ Documentos relacionados: [modelagem de serviços e ofertas (TAGF)](modelagem-ser
 
 ### O que **não** é Service Domain
 
-O API Gateway, o inbox DynamoDB, o Business Fingerprint (idempotência), o dispatcher Lambda, as filas SQS Fast/Standard, o `LaneBudgetAllocator` (política 70/30), o `TokenBucket` (180 TPS), o circuit breaker e a stack de observabilidade são **mecanismos técnicos**. Eles implementam as Service Operations de Customer Offer e protegem a chamada a Consumer Loan. A política 70/30 é parâmetro comercial (veja a [modelagem TAGF](modelagem-servicos-e-ofertas.md)), não um SD.
+O API Gateway, o inbox DynamoDB, o Business Fingerprint (idempotência), o dispatcher Lambda, as filas SQS Fast/Standard, o `LaneBudgetAllocator` (política 70/30), o `TokenBucket` (180 TPS), o circuit breaker e a stack de observabilidade são **mecanismos técnicos**. Eles implementam as Service Operations de Customer Offer e protegem a chamada a Consumer Loan. A política 70/30 é parâmetro comercial (veja a [modelagem TOGAF](modelagem-servicos-e-ofertas.md)), não um SD.
 
 ---
 

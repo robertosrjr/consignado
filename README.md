@@ -9,6 +9,8 @@ Plataforma de ingestão assíncrona de propostas de crédito: aceita pedidos na 
 
 Fluxo: **API → DynamoDB → dispatcher → SQS → worker → legado**.
 
+Arquitetura de referência: **[BIAN v14.0](https://bian.org/servicelandscape-14-0-0/)** (Banking Industry Architecture Network). A plataforma corresponde ao Service Domain *Customer Offer*, e o Core Banking ao *Consumer Loan*; veja o [alinhamento ao BIAN](docs/narrativas/alinhamento-bian.md). A modelagem de serviços e ofertas segue o **TOGAF** ([documento](docs/narrativas/modelagem-servicos-e-ofertas.md)).
+
 Metas da PoC: **10.000 req/s na entrada**, **p95 abaixo de 100 ms** e processamento limitado a **180 TPS no legado**. A homologação completa permanece pendente; veja o [estado atual e as limitações](docs/estado-atual.md).
 
 ## Executar localmente
@@ -32,7 +34,7 @@ Para encerrar, execute `.\scripts\local-down.ps1` na pasta `applications`.
 | Fechamento da PoC de SRE | [Conclusão, evidências, limites e backlog](docs/sre/fechamento-poc-sre-observabilidade.md) |
 | Contexto de negócio e metas | [Contexto e objetivos](docs/narrativas/contexto-e-objetivos.md) |
 | Alinhamento ao BIAN v14.0 | [Service Domains, cenário e lacunas](docs/narrativas/alinhamento-bian.md) |
-| Serviços de negócio e ofertas (TAGF) | [Modelagem de serviços e ofertas](docs/narrativas/modelagem-servicos-e-ofertas.md) |
+| Serviços de negócio e ofertas (TOGAF) | [Modelagem de serviços e ofertas](docs/narrativas/modelagem-servicos-e-ofertas.md) |
 | Arquitetura, stack e decisões | [Visão técnica](docs/manuais/visao-tecnica.md) |
 | Build, módulos e testes | [Aplicações](applications/README.md) |
 | Ambiente local e envio de métricas | [Ambiente local](docs/manuais/ambiente-local.md) |

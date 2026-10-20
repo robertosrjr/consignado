@@ -1,4 +1,4 @@
-# Modelagem de Serviços de Negócio e Ofertas de Serviço (TAGF)
+# Modelagem de Serviços de Negócio e Ofertas de Serviço (TOGAF)
 
 Modelagem de negócio da plataforma de crédito consignado, feita com a skill `service-modeling-skill`. Ela separa **o que** o banco entrega (Serviços de Negócio, estáveis) de **como** cada público consome essa entrega (Ofertas de Serviço, que mudam com mercado, campanha e regulação). Os números de SLA vêm das metas da PoC ([contexto e objetivos](contexto-e-objetivos.md)). Ainda não foram homologados e não são compromissos contratuais.
 
