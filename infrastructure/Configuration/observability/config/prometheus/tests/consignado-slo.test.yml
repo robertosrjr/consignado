@@ -1,0 +1,103 @@
+rule_files:
+  - ../rules/consignado-slo.yml
+
+evaluation_interval: 30s
+# Razoes e budget nao sao exatos em ponto flutuante: tolerancia + round nas expressoes
+fuzzy_compare: true
+
+tests:
+  - name: J1 com aceites e nenhuma serie 5xx tem zero erro
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}'
+        values: '0+100x60'
+    promql_expr_test:
+      - expr: slo:j1_availability_errors:ratio_rate5m
+        eval_time: 30m
+        exp_samples:
+          - labels: 'slo:j1_availability_errors:ratio_rate5m'
+            value: 0
+      - expr: slo:j1_availability_budget_remaining:ratio30d
+        eval_time: 30m
+        exp_samples:
+          - labels: 'slo:j1_availability_budget_remaining:ratio30d'
+            value: 1
+
+  - name: J1 exclui 4xx de contrato e conta 5xx como ruim
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}'
+        values: '0+100x60'
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="500"}'
+        values: '0+1x60'
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="400"}'
+        values: '0+50x60'
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="429"}'
+        values: '0+50x60'
+      - series: 'http_server_requests_seconds_bucket{service="ingestion-api",method="POST",uri="/v1/proposals",status="202",le="0.1"}'
+        values: '0+90x60'
+    promql_expr_test:
+      - expr: slo:j1_availability_errors:ratio_rate5m
+        eval_time: 30m
+        exp_samples:
+          - labels: 'slo:j1_availability_errors:ratio_rate5m'
+            value: 0.009900990099009901
+      - expr: round(slo:j1_latency_100ms_errors:ratio_rate5m, 0.000001)
+        eval_time: 30m
+        exp_samples:
+          - labels: '{}'
+            value: 0.1
+      - expr: round(slo:j1_availability_budget_remaining:ratio30d, 0.000001)
+        eval_time: 60m
+        exp_samples:
+          - labels: '{}'
+            value: -0.980198
+
+  - name: J1 sem trafego elegivel fica sem dado
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="401"}'
+        values: '0+10x60'
+    promql_expr_test:
+      - expr: slo:j1_availability_errors:ratio_rate5m
+        eval_time: 30m
+        exp_samples: []
+
+  - name: J2 por lane com budget restante
+    interval: 1m
+    input_series:
+      - series: 'slo_j2_events_total{lane="fast",outcome="good"}'
+        values: '0+99x60'
+      - series: 'slo_j2_events_total{lane="fast",outcome="bad"}'
+        values: '0+1x60'
+      - series: 'slo_j2_events_total{lane="standard",outcome="good"}'
+        values: '0+97x60'
+      - series: 'slo_j2_events_total{lane="standard",outcome="bad"}'
+        values: '0+3x60'
+    promql_expr_test:
+      - expr: slo:j2_deadline_errors:ratio_rate5m
+        eval_time: 30m
+        exp_samples:
+          - labels: 'slo:j2_deadline_errors:ratio_rate5m{lane="fast"}'
+            value: 0.01
+          - labels: 'slo:j2_deadline_errors:ratio_rate5m{lane="standard"}'
+            value: 0.03
+      - expr: round(slo:j2_deadline_budget_remaining:ratio30d, 0.000001)
+        eval_time: 60m
+        exp_samples:
+          - labels: '{lane="fast"}'
+            value: 0.8
+          - labels: '{lane="standard"}'
+            value: 0.7
+
+  - name: J2 sem propostas vencidas fica sem dado
+    interval: 1m
+    input_series:
+      - series: 'slo_j2_events_total{lane="fast",outcome="good"}'
+        values: '0+0x60'
+      - series: 'slo_j2_events_total{lane="fast",outcome="bad"}'
+        values: '0+0x60'
+    promql_expr_test:
+      - expr: slo:j2_deadline_errors:ratio_rate5m
+        eval_time: 30m
+        exp_samples: []

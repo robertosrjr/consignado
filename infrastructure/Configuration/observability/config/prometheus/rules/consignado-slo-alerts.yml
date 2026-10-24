@@ -1,0 +1,146 @@
+# Alertas por queima de error budget (SLO v1, docs/sre/slo.md), multi-janela e multi-taxa:
+# - pagina (critical): taxa > 14,4x o budget em 5m E 1h  (~2% do budget de 30d em 1h)
+# - ticket (warning):  taxa > 6x o budget em 30m E 6h    (~5% do budget de 30d em 6h)
+# A janela curta faz o alerta resolver rapido quando a queima para; a longa evita ruido.
+# Consome as recording rules de consignado-slo.yml. Sem dado (sem trafego) nao dispara.
+groups:
+  - name: consignado.slo.burn
+    rules:
+      # --- J1 disponibilidade (meta 99,5% => budget 0,005) ---
+      - alert: ConsignadoJ1AvailabilityBurnFast
+        expr: |
+          slo:j1_availability_errors:ratio_rate5m > (14.4 * 0.005)
+          and slo:j1_availability_errors:ratio_rate1h > (14.4 * 0.005)
+        for: 2m
+        labels:
+          severity: critical
+          notification: sre
+          component: ingestion
+          slo: j1-availability
+        annotations:
+          summary: "J1: queima rapida do budget de disponibilidade"
+          description: "Erros 5xx acima de 14,4x o budget (7,2%) em 5m e 1h. Mantido, esgota o budget de 30 dias em pouco mais de 2 dias. Conferir DynamoDB, inbox_unavailable e timeouts."
+          runbook: "ALERTAS.md#consignadoj1availabilityburn"
+          dashboard_path: "/d/consignado-slo-budget/consignado-slo-e-error-budget"
+          jaeger_service: "ingestion-api"
+          jaeger_operation: "http post /v1/proposals"
+
+      - alert: ConsignadoJ1AvailabilityBurnSlow
+        expr: |
+          slo:j1_availability_errors:ratio_rate30m > (6 * 0.005)
+          and slo:j1_availability_errors:ratio_rate6h > (6 * 0.005)
+        for: 15m
+        labels:
+          severity: warning
+          notification: sre
+          component: ingestion
+          slo: j1-availability
+        annotations:
+          summary: "J1: queima lenta do budget de disponibilidade"
+          description: "Erros 5xx acima de 6x o budget (3%) em 30m e 6h. Abrir ticket; nao exige resposta imediata."
+          runbook: "ALERTAS.md#consignadoj1availabilityburn"
+          dashboard_path: "/d/consignado-slo-budget/consignado-slo-e-error-budget"
+
+      # --- J1 latencia <= 100 ms (meta 95% => budget 0,05) ---
+      - alert: ConsignadoJ1LatencyBurnFast
+        expr: |
+          slo:j1_latency_100ms_errors:ratio_rate5m > (14.4 * 0.05)
+          and slo:j1_latency_100ms_errors:ratio_rate1h > (14.4 * 0.05)
+        for: 2m
+        labels:
+          severity: critical
+          notification: sre
+          component: ingestion
+          slo: j1-latency
+        annotations:
+          summary: "J1: queima rapida do budget de latencia"
+          description: "Mais de 72% dos aceites acima de 100 ms em 5m e 1h. Conferir banco, aquecimento, recursos e traces. Nao aumentar timeouts sem diagnostico."
+          runbook: "ALERTAS.md#consignadoj1latencyburn"
+          dashboard_path: "/d/consignado-slo-budget/consignado-slo-e-error-budget"
+          jaeger_service: "ingestion-api"
+          jaeger_operation: "http post /v1/proposals"
+
+      - alert: ConsignadoJ1LatencyBurnSlow
+        expr: |
+          slo:j1_latency_100ms_errors:ratio_rate30m > (6 * 0.05)
+          and slo:j1_latency_100ms_errors:ratio_rate6h > (6 * 0.05)
+        for: 15m
+        labels:
+          severity: warning
+          notification: sre
+          component: ingestion
+          slo: j1-latency
+        annotations:
+          summary: "J1: queima lenta do budget de latencia"
+          description: "Mais de 30% dos aceites acima de 100 ms em 30m e 6h. Abrir ticket."
+          runbook: "ALERTAS.md#consignadoj1latencyburn"
+          dashboard_path: "/d/consignado-slo-budget/consignado-slo-e-error-budget"
+
+      # --- J2 decisao no prazo, por lane (budget = 1 - objetivo da lane) ---
+      - alert: ConsignadoJ2DeadlineBurnFast
+        expr: |
+          slo:j2_deadline_errors:ratio_rate5m > on (lane) (14.4 * (1 - slo:j2_deadline:objective))
+          and on (lane)
+          slo:j2_deadline_errors:ratio_rate1h > on (lane) (14.4 * (1 - slo:j2_deadline:objective))
+        for: 2m
+        labels:
+          severity: critical
+          notification: sre
+          component: worker
+          slo: j2-deadline
+        annotations:
+          summary: "J2: queima rapida do budget de prazo na lane {{ $labels.lane }}"
+          description: "Propostas vencendo sem decisao correta acima de 14,4x o budget em 5m e 1h. A medicao ocorre no vencimento: a causa comecou ate um prazo antes. Conferir legado, circuito, fila e DLQ."
+          runbook: "ALERTAS.md#consignadoj2deadlineburn"
+          dashboard_path: "/d/consignado-slo-budget/consignado-slo-e-error-budget"
+          jaeger_service: "worker"
+          jaeger_operation: "process proposal"
+
+      - alert: ConsignadoJ2DeadlineBurnSlow
+        expr: |
+          slo:j2_deadline_errors:ratio_rate30m > on (lane) (6 * (1 - slo:j2_deadline:objective))
+          and on (lane)
+          slo:j2_deadline_errors:ratio_rate6h > on (lane) (6 * (1 - slo:j2_deadline:objective))
+        for: 15m
+        labels:
+          severity: warning
+          notification: sre
+          component: worker
+          slo: j2-deadline
+        annotations:
+          summary: "J2: queima lenta do budget de prazo na lane {{ $labels.lane }}"
+          description: "Propostas fora do prazo acima de 6x o budget em 30m e 6h. Abrir ticket; revisar capacidade e envelope de carga."
+          runbook: "ALERTAS.md#consignadoj2deadlineburn"
+          dashboard_path: "/d/consignado-slo-budget/consignado-slo-e-error-budget"
+
+  - name: consignado.slo.support
+    rules:
+      # Mensagem na DLQ e proposta sem decisao automatica: risco financeiro, nao apenas atraso.
+      - alert: ConsignadoDlqNotEmpty
+        expr: max by (env, service, instance) (worker_dlq_depth{service="worker"}) > 0
+        for: 1m
+        labels:
+          severity: critical
+          notification: sre
+          component: worker
+        annotations:
+          summary: "Mensagens na DLQ das lanes"
+          description: "A DLQ tem {{ $value }} mensagem(ns) apos 3 recebimentos sem sucesso. Nao reprocessar em massa sem diagnostico; preservar Idempotency-Key."
+          runbook: "ALERTAS.md#consignadodlqnotempty"
+          dashboard_path: "/d/consignado-slo-budget/consignado-slo-e-error-budget"
+
+      # Sem avaliador, J2 para de medir: o budget pareceria intacto. Exige worker enviando metricas.
+      - alert: ConsignadoSloEvaluatorStale
+        expr: |
+          (time() - max by (env, service, instance) (slo_j2_last_evaluation_seconds{service="worker"}) > 120)
+          and on (instance) ((time() - push_time_seconds{job="worker"}) < 120)
+        for: 2m
+        labels:
+          severity: warning
+          notification: sre
+          component: worker
+        annotations:
+          summary: "Avaliador de prazos do SLO J2 parado"
+          description: "Ultimo ciclo completo ha mais de 120 s, com o worker enviando metricas. J2 deixou de ser medido; conferir DynamoDB e logs event=slo_deadline_evaluation_failed."
+          runbook: "ALERTAS.md#consignadosloevaluatorstale"
+          dashboard_path: "/d/consignado-slo-budget/consignado-slo-e-error-budget"

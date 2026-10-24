@@ -10,16 +10,18 @@ Ferramenta de desenvolvimento. Sobe, **em uma única JVM e sem Docker**, tudo de
 
 A máquina de desenvolvimento não tem Docker, então Testcontainers e `docker compose` estão fora. Sem um substituto, só restaria mockar DynamoDB e SQS — e aí os testes provariam apenas que os mocks concordam com o código, não que a idempotência funciona no banco real.
 
-Este módulo usa os emuladores **oficiais** embarcados na JVM: `DynamoDBLocal` (o mesmo motor da AWS, com Streams) e `ElasticMQ` (API do SQS). A escrita condicional e o redrive são exercitados de verdade.
+Este módulo usa os emuladores embarcados na JVM: `DynamoDBLocal`, fornecido pela AWS, e `ElasticMQ`, compatível com parte da API do SQS. Eles não reproduzem todos os comportamentos dos serviços AWS. A escrita condicional e o redrive são exercitados de verdade.
 
 ## O que ele sobe
 
 | Componente | Porta | Papel |
 |---|---|---|
-| DynamoDB Local | 8000 | tabela `DurableInbox` com Streams |
+| DynamoDB Local | 8000 | `DurableInbox` com Streams e índices SRE; `WorkerProposal` para estado e histórico |
 | ElasticMQ (SQS) | 9324 | filas fast, standard e DLQ (redrive após 3 tentativas) |
 | Emissor JWT | 8082 | JWKS e `GET /token?tenant=<id>` |
 | `LocalStreamDispatcher` | — | substitui o acionamento da Lambda |
+| `OrphanSweeper` | — | busca órfãos RECEIVED após 60 s, a cada 30 s |
+| Ponte de alertas e consumidor | 9096 | `/alerts` → `sqs-alerts` → registro JSONL de incidentes |
 
 Tudo em memória e **apenas em loopback**. Ao encerrar, nada persiste.
 

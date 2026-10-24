@@ -7,6 +7,7 @@ import br.com.consignado.platform.worker.application.port.in.ProcessingOutcome;
 import br.com.consignado.platform.worker.application.port.out.BusinessObserver;
 import br.com.consignado.platform.worker.application.port.out.ClockPort;
 import br.com.consignado.platform.worker.application.port.out.CreationResult;
+import br.com.consignado.platform.worker.application.port.out.DecisionRecorderPort;
 import br.com.consignado.platform.worker.application.port.out.InboxReadPort;
 import br.com.consignado.platform.worker.application.port.out.InboxRecord;
 import br.com.consignado.platform.worker.application.port.out.LegacyCorePort;
@@ -38,6 +39,7 @@ public class ProcessProposalService implements ProcessProposalUseCase {
   private final LegacyCorePort legacy;
   private final ClockPort clock;
   private final BusinessObserver business;
+  private final DecisionRecorderPort decisions;
 
   public ProcessProposalService(
       ProposalRepositoryPort repository,
@@ -53,11 +55,22 @@ public class ProcessProposalService implements ProcessProposalUseCase {
       LegacyCorePort legacy,
       ClockPort clock,
       BusinessObserver business) {
+    this(repository, inbox, legacy, clock, business, DecisionRecorderPort.NONE);
+  }
+
+  public ProcessProposalService(
+      ProposalRepositoryPort repository,
+      InboxReadPort inbox,
+      LegacyCorePort legacy,
+      ClockPort clock,
+      BusinessObserver business,
+      DecisionRecorderPort decisions) {
     this.repository = repository;
     this.inbox = inbox;
     this.legacy = legacy;
     this.clock = clock;
     this.business = business;
+    this.decisions = decisions;
   }
 
   @Override
@@ -73,6 +86,12 @@ public class ProcessProposalService implements ProcessProposalUseCase {
             new ProposalSeed(message.key(), message.tenant(), message.lane()));
     Proposal proposal = creation.proposal();
     if (proposal.isFinal()) {
+      // Repara a janela entre persistir o terminal e registrar a decisao na Inbox.
+      // O recorder e idempotente e preserva o instante original da decisao.
+      decisions.recordDecision(
+          message.key(),
+          proposal.status() == br.com.consignado.platform.worker.domain.ProposalStatus.CONFIRMED,
+          proposal.updatedAt());
       return ProcessingOutcome.COMPLETED;
     }
 
@@ -94,6 +113,7 @@ public class ProcessProposalService implements ProcessProposalUseCase {
         repository.save(
             sent.confirm(confirmed.averbacaoId(), at),
             List.of(ProposalEvent.of(message.key(), ProposalEvent.CONFIRMED, at, "averbado")));
+        decisions.recordDecision(message.key(), true, at);
         business.settled(settlement(message, record, sent, at, true));
         yield ProcessingOutcome.COMPLETED;
       }
@@ -102,6 +122,7 @@ public class ProcessProposalService implements ProcessProposalUseCase {
         repository.save(
             sent.fail(rejected.reason(), at),
             List.of(ProposalEvent.of(message.key(), ProposalEvent.FAILED, at, "rejeitada")));
+        decisions.recordDecision(message.key(), false, at);
         business.settled(settlement(message, record, sent, at, false));
         yield ProcessingOutcome.COMPLETED;
       }

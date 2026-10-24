@@ -20,7 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Metricas de negocio do Worker. {@code business.vgv} (soma = R$, contagem = operacoes) por
  * resultado, convenio, lane e portabilidade; {@code business.partner.settled} por parceiro (sob a
  * politica de cardinalidade); {@code business.first.pass} para a averbacao de primeira passagem;
- * {@code business.time.to.settle} com limites de SLA (inclui os 5 min da virada).
+ * {@code business.time.to.settle} com limites de SLA (inclui os 5 min da virada e os prazos de 2/45
+ * min do SLO J2).
  *
  * <p>Cardinalidade fixa: 24 series em {@code business.vgv} (2 resultados x 3 convenios x 2 lanes x
  * 2 portabilidades). Todos os medidores de combinacao fixa sao registrados no construtor; os de
@@ -62,9 +63,11 @@ public final class BusinessMetrics implements BusinessObserver {
               .serviceLevelObjectives(
                   Duration.ofSeconds(30),
                   Duration.ofMinutes(1),
+                  Duration.ofMinutes(2),
                   Duration.ofMinutes(5),
                   Duration.ofMinutes(15),
-                  Duration.ofMinutes(30))
+                  Duration.ofMinutes(30),
+                  Duration.ofMinutes(45))
               .tag("lane", lower(lane.name()))
               .register(registry));
     }

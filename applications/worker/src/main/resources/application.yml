@@ -27,11 +27,20 @@ worker:
     type: ${WORKER_QUEUE_TYPE:sqs}
     fast-queue-url: ${WORKER_QUEUE_FAST_URL:}
     standard-queue-url: ${WORKER_QUEUE_STANDARD_URL:}
+    dlq-queue-url: ${WORKER_QUEUE_DLQ_URL:}
     prefetch: ${WORKER_QUEUE_PREFETCH:20}
     wait-seconds: ${WORKER_QUEUE_WAIT_SECONDS:5}
     visibility-timeout-seconds: ${WORKER_QUEUE_VISIBILITY_TIMEOUT_SECONDS:30}
     retry-base-delay: ${WORKER_QUEUE_RETRY_BASE_DELAY:5s}
     retry-max-delay: ${WORKER_QUEUE_RETRY_MAX_DELAY:60s}
+  slo:
+    enabled: ${WORKER_SLO_ENABLED:true}
+    fast-deadline: ${WORKER_SLO_FAST_DEADLINE:2m}
+    standard-deadline: ${WORKER_SLO_STANDARD_DEADLINE:45m}
+    evaluation-period: ${WORKER_SLO_EVALUATION_PERIOD:15s}
+  proposals:
+    type: ${WORKER_PROPOSALS_TYPE:memory}
+    table-name: ${WORKER_PROPOSALS_TABLE:WorkerProposal}
   inbox:
     type: ${WORKER_INBOX_TYPE:dynamodb}
     table-name: ${WORKER_INBOX_TABLE:DurableInbox}

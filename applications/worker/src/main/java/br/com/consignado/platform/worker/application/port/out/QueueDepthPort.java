@@ -6,4 +6,9 @@ import br.com.consignado.platform.shared.contract.Lane;
 public interface QueueDepthPort {
 
   long approximateDepth(Lane lane);
+
+  /** Profundidade da DLQ; negativo quando nao ha DLQ conhecida (sinal ausente). */
+  default long dlqDepth() {
+    return -1;
+  }
 }

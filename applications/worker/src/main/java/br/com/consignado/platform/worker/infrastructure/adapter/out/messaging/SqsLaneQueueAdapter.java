@@ -74,6 +74,7 @@ public final class SqsLaneQueueAdapter implements LaneQueuePort, QueueDepthPort,
   private final SqsClient sqs;
   private final String fastQueueUrl;
   private final String standardQueueUrl;
+  private final String dlqQueueUrl;
   private final int waitSeconds;
   private final int visibilityTimeoutSeconds;
   private final BlockingQueue<SqsMessage> fastBuffer;
@@ -87,6 +88,7 @@ public final class SqsLaneQueueAdapter implements LaneQueuePort, QueueDepthPort,
       SqsClient sqs,
       String fastQueueUrl,
       String standardQueueUrl,
+      String dlqQueueUrl,
       int prefetch,
       int waitSeconds,
       int visibilityTimeoutSeconds) {
@@ -96,6 +98,7 @@ public final class SqsLaneQueueAdapter implements LaneQueuePort, QueueDepthPort,
     this.sqs = sqs;
     this.fastQueueUrl = fastQueueUrl;
     this.standardQueueUrl = standardQueueUrl;
+    this.dlqQueueUrl = dlqQueueUrl;
     this.prefetch = prefetch;
     this.waitSeconds = waitSeconds;
     this.visibilityTimeoutSeconds = visibilityTimeoutSeconds;
@@ -168,11 +171,21 @@ public final class SqsLaneQueueAdapter implements LaneQueuePort, QueueDepthPort,
 
   @Override
   public long approximateDepth(Lane lane) {
+    return depth(url(lane));
+  }
+
+  /** Profundidade aproximada da DLQ; -1 se a URL nao foi configurada (sinal ausente, nao zero). */
+  @Override
+  public long dlqDepth() {
+    return dlqQueueUrl == null || dlqQueueUrl.isBlank() ? -1 : depth(dlqQueueUrl);
+  }
+
+  private long depth(String queueUrl) {
     try {
       String value =
           sqs.getQueueAttributes(
                   GetQueueAttributesRequest.builder()
-                      .queueUrl(url(lane))
+                      .queueUrl(queueUrl)
                       .attributeNames(QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES)
                       .build())
               .attributesAsStrings()

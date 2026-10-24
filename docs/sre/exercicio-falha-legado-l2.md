@@ -1,6 +1,6 @@
 # Exercício SRE L2: timeout e possível commit tardio
 
-Data: 18/10/2026. Estado desta revisão: **PAUSADO a pedido do usuário; sequência de timeout e execução tardia observada, fechamento da conciliação pendente**. O [desenho](../../aidlc-docs/construction/sre-r1/l2-design.md) define hipótese e critérios; este documento registra os resultados observados, inclusive falhas do protocolo.
+Data: 18/10/2026. Estado desta revisão: **ENCERRADO como INCOMPLETE (conciliação offline em 23/10/2026)**; sequência de timeout e execução tardia observada. O [desenho](../../aidlc-docs/construction/sre-r1/l2-design.md) define hipótese e critérios; este documento registra os resultados observados, inclusive falhas do protocolo.
 
 ## Protocolo
 
@@ -46,6 +46,21 @@ Os contadores globais do mock naquele corte registraram oito efeitos únicos e u
 O usuário pediu pausa após essas observações. A falha foi restaurada e o ambiente permanece ligado. Na retomada, conferir os artefatos existentes (`requests.jtl`, `client-summary.json`, `postprocess-recovery.json` e `sre-control-recovered.json`, se concluídos), validar sessão/cobertura, gerar a captura conciliada e concluir o relatório. Não reenviar a massa automaticamente. O painel de Experimentos ainda conserva o relatório publicado do L1; não foi publicado um resultado final do L2.
 
 Encerramento posterior solicitado pelo usuário: em 18/10/2026 às 12:19, serviços locais, containers e Docker foram parados e a EC2 foi confirmada `stopped`. Volume e arquivos de evidência foram preservados; estados voláteis dos emuladores/worker não são recuperáveis pelo simples restart. A preparação do controle reconciliado foi concluída antes do encerramento, preservando o `result.json` original INCOMPLETE; conferir esses artefatos offline na retomada, sem esperar a sessão antiga em memória.
+
+## Conciliação offline — 23/10/2026
+
+Feita somente sobre os artefatos de `applications/.local/legacy-l2-20261018-02/`, sem reenvio e sem ligar ambiente (onda S0 do [plano de evolução](../../aidlc-docs/inception/sre-evolucao/plano-evolucao-sre.md)).
+
+| Critério do [desenho](../../aidlc-docs/construction/sre-r1/l2-design.md) | Resultado | Evidência |
+|---|---|---|
+| Dois 202, RECEIVED e DUPLICATE_ACCEPTED, mesma identidade | Atende | `requests.jtl` (SHA-256 `033fb709…` confere com `sre-control-recovered.json`) |
+| Uma confirmação final na sessão original | Atende | `postprocess-recovery.json`: um CONFIRMED, `workerInstance` igual ao do controle |
+| Cliente falha ~3 s, servidor executa ~4 s e termina antes do retry; retry 200 | Atende | `jaeger-summary.json`: 3,001 s; 4,111 s (fim 12:05:43,48); retry 12:05:46,84, HTTP 200 |
+| Mock: um efeito único e um replay por identidade | Sem evidência | Só contadores globais (oito efeitos, um replay) |
+| Captura conciliada (R$ 1.000, nenhuma aberta) | Sem evidência | Não gerada antes do desligamento |
+| Filas e DLQ vazias após o ensaio | Sem evidência | `result.json` só tem `queuesBefore` |
+
+**Resultado final: INCOMPLETE.** A cronologia sustenta a hipótese de timeout com execução tardia tratada sem segunda confirmação, mas três critérios dependiam de estado volátil (emuladores e worker em memória), perdido em 18/10. O resultado não pode ser elevado a PASS offline. Uma prova completa exige estado durável (onda S5) e nova coorte, com nova identidade.
 
 ## Reprodução
 

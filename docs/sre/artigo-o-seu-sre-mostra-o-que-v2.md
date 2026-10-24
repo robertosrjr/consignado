@@ -1,5 +1,7 @@
 # O seu SRE mostra o quê?
 
+**Recorte histórico:** este artigo descreve o primeiro ciclo, encerrado em 18/10/2026. Entregas posteriores, incluindo durabilidade S5 e homologação pendente S6, estão no [estado atual](../estado-atual.md). Não usar o artigo como inventário da implementação atual.
+
 *O que aprendemos ao seguir uma proposta da entrada à recuperação — e ao testar se os alertas acompanhavam essa história.*
 
 Cinco propostas entraram. Cinco foram confirmadas. Nenhuma ficou pendente. Os R$ 5 mil do teste bateram na conciliação.

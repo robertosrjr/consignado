@@ -18,9 +18,9 @@ Com duas filas, o Worker divide o orçamento: **70% para a fast lane** e 30% par
 
 | Critério | Peso |
 |---|---|
-| Tenant VIP (`DISPATCHER_VIP_TENANTS`) | 60 |
-| Valor acima do limite (`DISPATCHER_AMOUNT_THRESHOLD`) | 40 |
-| Portabilidade | 30 |
+| Tenant VIP (`DISPATCHER_VIP_TENANTS`) | 40 |
+| Valor a partir do limite (`DISPATCHER_AMOUNT_THRESHOLD`) | 30 |
+| Portabilidade | 60 |
 
 Score maior ou igual a `DISPATCHER_FAST_THRESHOLD` (padrão 30) vai para a fast lane.
 
@@ -39,7 +39,7 @@ flowchart LR
     F --> G
 ```
 
-A marcação de `DISPATCHED` é condicional: se o registro já foi despachado, não publica de novo. Uma reentrega do stream não gera mensagem duplicada.
+A publicação ocorre antes da marcação condicional de `DISPATCHED`. Uma falha entre as duas etapas pode gerar republicação; a entrega é ao menos uma vez e o worker precisa ser idempotente. O `OrphanSweeper` recupera itens `RECEIVED` pelo índice de pendências; seu acionamento foi integrado ao ambiente local. [Validação S5](../../aidlc-docs/construction/sre-s5/validation.md).
 
 ## Configuração
 
@@ -49,7 +49,7 @@ A marcação de `DISPATCHED` é condicional: se o registro já foi despachado, n
 | `DISPATCHER_STANDARD_QUEUE_URL` | — |
 | `DISPATCHER_INBOX_TABLE` | `DurableInbox` |
 | `DISPATCHER_VIP_TENANTS` | vazio |
-| `DISPATCHER_AMOUNT_THRESHOLD` | — |
+| `DISPATCHER_AMOUNT_THRESHOLD` | `50000.00` |
 | `DISPATCHER_FAST_THRESHOLD` | 30 |
 
 ## Métricas

@@ -63,26 +63,6 @@
           ]
         },
         {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "20m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "20m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
           "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "20m",
           "exp_samples": [
@@ -148,26 +128,6 @@
         },
         {
           "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "2m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "2m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "2m",
           "exp_samples": [
             {
@@ -251,26 +211,6 @@
           ]
         },
         {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "1m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "1m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
           "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "1m",
           "exp_samples": [
@@ -345,26 +285,6 @@
           ]
         },
         {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "4m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "4m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
           "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "4m",
           "exp_samples": [
@@ -431,26 +351,6 @@
             {
               "labels": "{}",
               "value": 1
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "2m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "2m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
             }
           ]
         },
@@ -541,26 +441,6 @@
           ]
         },
         {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "5m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "5m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
           "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "5m",
           "exp_samples": [
@@ -634,26 +514,6 @@
         },
         {
           "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "10m",
           "exp_samples": [
             {
@@ -749,26 +609,6 @@
           ]
         },
         {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
           "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "10m",
           "exp_samples": [
@@ -842,26 +682,6 @@
         },
         {
           "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "2m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "2m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "2m",
           "exp_samples": [
             {
@@ -953,26 +773,6 @@
           ]
         },
         {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "5m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "5m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
           "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "5m",
           "exp_samples": [
@@ -1055,26 +855,6 @@
           ]
         },
         {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
           "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
           "eval_time": "10m",
           "exp_samples": [
@@ -1091,108 +871,6 @@
             {
               "labels": "{}",
               "value": 1
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "5xx alto com trafego",
-      "interval": "1m",
-      "input_series": [
-        {
-          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
-          "values": "1+0x40"
-        },
-        {
-          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
-          "values": "0+60x40"
-        },
-        {
-          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
-          "values": "0+60x40"
-        },
-        {
-          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
-          "values": "0+60x40"
-        },
-        {
-          "series": "http_server_requests_seconds_count{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",status=\"202\"}",
-          "values": "0+48x40"
-        },
-        {
-          "series": "http_server_requests_seconds_count{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",status=\"503\"}",
-          "values": "0+12x40"
-        }
-      ],
-      "promql_expr_test": [
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 1
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "10m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
             }
           ]
         },
@@ -1255,136 +933,6 @@
             {
               "labels": "{}",
               "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "15m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "15m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoWorkerStalled\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "15m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoBacklogDelayed\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "15m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoLegacyUnavailable\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "15m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "p95 alto com volume e persistencia",
-      "interval": "1m",
-      "input_series": [
-        {
-          "series": "up{job=\"pushgateway\",instance=\"pushgateway:9091\"}",
-          "values": "1+0x40"
-        },
-        {
-          "series": "push_time_seconds{job=\"ingestion-api\",instance=\"test\"}",
-          "values": "0+60x40"
-        },
-        {
-          "series": "push_time_seconds{job=\"worker\",instance=\"test\"}",
-          "values": "0+60x40"
-        },
-        {
-          "series": "push_time_seconds{job=\"mock-legacy\",instance=\"test\"}",
-          "values": "0+60x40"
-        },
-        {
-          "series": "http_server_requests_seconds_bucket{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",le=\"0.5\"}",
-          "values": "0+30x40"
-        },
-        {
-          "series": "http_server_requests_seconds_bucket{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",le=\"1.0\"}",
-          "values": "0+60x40"
-        },
-        {
-          "series": "http_server_requests_seconds_bucket{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",le=\"+Inf\"}",
-          "values": "0+60x40"
-        },
-        {
-          "series": "http_server_requests_seconds_count{env=\"local\",service=\"ingestion-api\",instance=\"test\",method=\"POST\",uri=\"/v1/proposals\",status=\"202\"}",
-          "values": "0+60x40"
-        }
-      ],
-      "promql_expr_test": [
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoScrapeDown\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "15m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoPushMissing\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "15m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionErrors\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "15m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "expr": "count(ALERTS{alertname=\"ConsignadoIngestionLatency\",alertstate=\"firing\"}) or vector(0)",
-          "eval_time": "15m",
-          "exp_samples": [
-            {
-              "labels": "{}",
-              "value": 1
             }
           ]
         },

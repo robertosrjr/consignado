@@ -1,12 +1,14 @@
 package br.com.consignado.platform.worker.infrastructure.config;
 
 import br.com.consignado.platform.aws.KmsDataKeyProvider;
+import br.com.consignado.platform.shared.contract.Lane;
 import br.com.consignado.platform.shared.crypto.DataKeyProvider;
 import br.com.consignado.platform.shared.crypto.LocalDataKeyProvider;
 import br.com.consignado.platform.shared.crypto.PayloadEnvelope;
 import br.com.consignado.platform.starter.TenantTagPolicy;
 import br.com.consignado.platform.worker.application.port.in.ProcessProposalUseCase;
 import br.com.consignado.platform.worker.application.port.out.ClockPort;
+import br.com.consignado.platform.worker.application.port.out.DecisionRecorderPort;
 import br.com.consignado.platform.worker.application.port.out.InboxReadPort;
 import br.com.consignado.platform.worker.application.port.out.LaneQueuePort;
 import br.com.consignado.platform.worker.application.port.out.LegacyCorePort;
@@ -19,6 +21,7 @@ import br.com.consignado.platform.worker.application.usecase.RetryBackoff;
 import br.com.consignado.platform.worker.domain.LaneBudgetAllocator;
 import br.com.consignado.platform.worker.infrastructure.adapter.in.messaging.DispatchLoopRunner;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.budget.FixedPerTaskBudgetAdapter;
+import br.com.consignado.platform.worker.infrastructure.adapter.out.inbox.DynamoDbDeadlineAdapter;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.inbox.DynamoDbInboxReadAdapter;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.inbox.InMemoryInboxReadAdapter;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.legacy.CircuitBreakerAvailabilityAdapter;
@@ -26,9 +29,12 @@ import br.com.consignado.platform.worker.infrastructure.adapter.out.legacy.Legac
 import br.com.consignado.platform.worker.infrastructure.adapter.out.legacy.MeteredLegacyCorePort;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.messaging.InMemoryLaneQueue;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.messaging.SqsLaneQueueAdapter;
+import br.com.consignado.platform.worker.infrastructure.adapter.out.persistence.DynamoDbProposalRepository;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.persistence.InMemoryProposalRepository;
+import br.com.consignado.platform.worker.infrastructure.adapter.out.persistence.ProposalStatusCounts;
 import br.com.consignado.platform.worker.infrastructure.metrics.BacklogEstimator;
 import br.com.consignado.platform.worker.infrastructure.metrics.BusinessMetrics;
+import br.com.consignado.platform.worker.infrastructure.metrics.DeadlineEvaluator;
 import br.com.consignado.platform.worker.infrastructure.metrics.QueueDepthSampler;
 import br.com.consignado.platform.worker.infrastructure.metrics.WorkerMetrics;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -39,6 +45,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -56,11 +63,16 @@ public class WorkerConfig {
   @Bean(destroyMethod = "close")
   @ConditionalOnProperty(name = "worker.sre.capture-file")
   br.com.consignado.platform.worker.infrastructure.metrics.SreSnapshotExporter sreSnapshotExporter(
-      InMemoryProposalRepository repository, org.springframework.core.env.Environment environment)
+      org.springframework.beans.factory.ObjectProvider<InMemoryProposalRepository> repository,
+      org.springframework.core.env.Environment environment)
       throws Exception {
+    InMemoryProposalRepository memory = repository.getIfAvailable();
+    if (memory == null) {
+      throw new IllegalStateException(
+          "worker.sre.capture-file requer worker.proposals.type=memory (captura de experimento)");
+    }
     return new br.com.consignado.platform.worker.infrastructure.metrics.SreSnapshotExporter(
-        repository,
-        java.nio.file.Path.of(environment.getRequiredProperty("worker.sre.capture-file")));
+        memory, java.nio.file.Path.of(environment.getRequiredProperty("worker.sre.capture-file")));
   }
 
   @Bean
@@ -74,6 +86,10 @@ public class WorkerConfig {
   }
 
   @Bean
+  @ConditionalOnProperty(
+      name = "worker.proposals.type",
+      havingValue = "memory",
+      matchIfMissing = true)
   InMemoryProposalRepository proposalRepository(ClockPort clock) {
     return new InMemoryProposalRepository(clock);
   }
@@ -130,7 +146,7 @@ public class WorkerConfig {
   @Bean
   WorkerMetrics workerMetrics(
       MeterRegistry registry,
-      InMemoryProposalRepository repository,
+      ProposalStatusCounts repository,
       BacklogEstimator estimator,
       CircuitBreaker legacyCircuitBreaker) {
     return new WorkerMetrics(registry, repository, estimator, legacyCircuitBreaker);
@@ -158,8 +174,9 @@ public class WorkerConfig {
       InboxReadPort inbox,
       LegacyCorePort legacy,
       ClockPort clock,
-      BusinessMetrics business) {
-    return new ProcessProposalService(repository, inbox, legacy, clock, business);
+      BusinessMetrics business,
+      DecisionRecorderPort decisions) {
+    return new ProcessProposalService(repository, inbox, legacy, clock, business, decisions);
   }
 
   @Bean
@@ -269,6 +286,37 @@ public class WorkerConfig {
       return new DynamoDbInboxReadAdapter(
           dynamoDbClient, properties.inbox().tableName(), new PayloadEnvelope(dataKeyProvider));
     }
+
+    @Bean
+    @ConditionalOnProperty(name = "worker.proposals.type", havingValue = "dynamodb")
+    DynamoDbProposalRepository durableProposalRepository(
+        DynamoDbClient dynamoDbClient, WorkerProperties properties, ClockPort clock) {
+      return new DynamoDbProposalRepository(
+          dynamoDbClient, properties.proposals().tableName(), clock);
+    }
+
+    @Bean
+    DynamoDbDeadlineAdapter deadlineAdapter(
+        DynamoDbClient dynamoDbClient, WorkerProperties properties) {
+      return new DynamoDbDeadlineAdapter(dynamoDbClient, properties.inbox().tableName());
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "worker.slo.enabled", havingValue = "true", matchIfMissing = true)
+    DeadlineEvaluator deadlineEvaluator(
+        MeterRegistry registry,
+        DynamoDbDeadlineAdapter deadlineAdapter,
+        Clock clock,
+        WorkerProperties properties) {
+      WorkerProperties.Slo slo = properties.slo();
+      return new DeadlineEvaluator(
+          registry,
+          deadlineAdapter,
+          clock,
+          Map.of(Lane.FAST, slo.fastDeadline(), Lane.STANDARD, slo.standardDeadline()),
+          slo.evaluationPeriod(),
+          slo.batchSize());
+    }
   }
 
   @Configuration(proxyBeanMethods = false)
@@ -278,6 +326,11 @@ public class WorkerConfig {
     @Bean
     InMemoryInboxReadAdapter memoryInbox() {
       return new InMemoryInboxReadAdapter();
+    }
+
+    @Bean
+    DecisionRecorderPort noDecisionRecorder() {
+      return DecisionRecorderPort.NONE;
     }
   }
 
@@ -303,6 +356,7 @@ public class WorkerConfig {
           sqsClient,
           queue.fastQueueUrl(),
           queue.standardQueueUrl(),
+          queue.dlqQueueUrl(),
           queue.prefetch(),
           queue.waitSeconds(),
           queue.visibilityTimeoutSeconds());

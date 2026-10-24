@@ -14,8 +14,11 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
 import software.amazon.awssdk.services.dynamodb.model.BillingMode;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndex;
 import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
+import software.amazon.awssdk.services.dynamodb.model.Projection;
+import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.dynamodb.model.StreamSpecification;
 import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
@@ -65,7 +68,10 @@ public final class LocalDynamoDb implements AutoCloseable {
         .build();
   }
 
-  /** Cria a tabela do DurableInbox com Streams (NEW_IMAGE) e TTL no atributo {@code ttl}. */
+  /**
+   * Cria a tabela do DurableInbox com Streams (NEW_IMAGE), TTL no atributo {@code ttl} e o indice
+   * esparso de prazos do SLO J2.
+   */
   public void createInboxTable(DynamoDbClient client, String tableName) {
     client.createTable(
         CreateTableRequest.builder()
@@ -74,11 +80,64 @@ public final class LocalDynamoDb implements AutoCloseable {
                 AttributeDefinition.builder()
                     .attributeName(InboxAttributes.IDEMPOTENCY_KEY)
                     .attributeType(ScalarAttributeType.S)
+                    .build(),
+                AttributeDefinition.builder()
+                    .attributeName(InboxAttributes.SLO_OPEN)
+                    .attributeType(ScalarAttributeType.S)
+                    .build(),
+                AttributeDefinition.builder()
+                    .attributeName(InboxAttributes.DISPATCH_PENDING)
+                    .attributeType(ScalarAttributeType.S)
+                    .build(),
+                AttributeDefinition.builder()
+                    .attributeName(InboxAttributes.CREATED_AT)
+                    .attributeType(ScalarAttributeType.N)
                     .build())
             .keySchema(
                 KeySchemaElement.builder()
                     .attributeName(InboxAttributes.IDEMPOTENCY_KEY)
                     .keyType(KeyType.HASH)
+                    .build())
+            .globalSecondaryIndexes(
+                GlobalSecondaryIndex.builder()
+                    .indexName(InboxAttributes.SLO_OPEN_INDEX)
+                    .keySchema(
+                        KeySchemaElement.builder()
+                            .attributeName(InboxAttributes.SLO_OPEN)
+                            .keyType(KeyType.HASH)
+                            .build(),
+                        KeySchemaElement.builder()
+                            .attributeName(InboxAttributes.CREATED_AT)
+                            .keyType(KeyType.RANGE)
+                            .build())
+                    .projection(
+                        Projection.builder()
+                            .projectionType(ProjectionType.INCLUDE)
+                            .nonKeyAttributes(InboxAttributes.DECISION, InboxAttributes.DECIDED_AT)
+                            .build())
+                    .build(),
+                GlobalSecondaryIndex.builder()
+                    .indexName(InboxAttributes.DISPATCH_PENDING_INDEX)
+                    .keySchema(
+                        KeySchemaElement.builder()
+                            .attributeName(InboxAttributes.DISPATCH_PENDING)
+                            .keyType(KeyType.HASH)
+                            .build(),
+                        KeySchemaElement.builder()
+                            .attributeName(InboxAttributes.CREATED_AT)
+                            .keyType(KeyType.RANGE)
+                            .build())
+                    .projection(
+                        Projection.builder()
+                            .projectionType(ProjectionType.INCLUDE)
+                            .nonKeyAttributes(
+                                InboxAttributes.TENANT_ID,
+                                InboxAttributes.CONVENIO_TYPE,
+                                InboxAttributes.PORTABILITY,
+                                InboxAttributes.AMOUNT,
+                                InboxAttributes.TRACING_ID,
+                                InboxAttributes.STATUS)
+                            .build())
                     .build())
             .billingMode(BillingMode.PAY_PER_REQUEST)
             .streamSpecification(
@@ -95,6 +154,33 @@ public final class LocalDynamoDb implements AutoCloseable {
                     .enabled(true)
                     .attributeName(InboxAttributes.TTL)
                     .build())
+            .build());
+  }
+
+  /**
+   * Tabela do estado duravel do Worker: item {@code STATE} por proposta e itens {@code EVENT#...}
+   * do historico, na mesma particao ({@code proposalKey}).
+   */
+  public void createWorkerProposalTable(DynamoDbClient client, String tableName) {
+    client.createTable(
+        CreateTableRequest.builder()
+            .tableName(tableName)
+            .attributeDefinitions(
+                AttributeDefinition.builder()
+                    .attributeName("proposalKey")
+                    .attributeType(ScalarAttributeType.S)
+                    .build(),
+                AttributeDefinition.builder()
+                    .attributeName("sk")
+                    .attributeType(ScalarAttributeType.S)
+                    .build())
+            .keySchema(
+                KeySchemaElement.builder()
+                    .attributeName("proposalKey")
+                    .keyType(KeyType.HASH)
+                    .build(),
+                KeySchemaElement.builder().attributeName("sk").keyType(KeyType.RANGE).build())
+            .billingMode(BillingMode.PAY_PER_REQUEST)
             .build());
   }
 

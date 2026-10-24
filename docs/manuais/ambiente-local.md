@@ -27,7 +27,7 @@ Fica de fora do local: KMS (o payload usa chave AES local), CloudWatch/EMF e a s
 
 ## Dados e métricas
 
-DynamoDB Local e ElasticMQ rodam em memória: reiniciar perde propostas e mensagens. Os estados do worker e o ledger do legado também são locais à execução. Os segredos gerados são repassados às aplicações; não são gravados em env.json.
+DynamoDB Local e ElasticMQ rodam em memória: reiniciar perde propostas e mensagens. O script seleciona estado do worker em DynamoDB: reiniciar só o worker preserva os estados enquanto o emulador permanece ativo. Reiniciar o DynamoDB Local apaga esses estados; o ledger do mock também é volátil. Os segredos gerados são repassados às aplicações; não são gravados em env.json.
 
 Para enviar métricas, iniciar com o endereço atual do Pushgateway:
 

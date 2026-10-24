@@ -20,6 +20,8 @@ public record WorkerProperties(
     @Valid @DefaultValue Queue queue,
     @Valid @DefaultValue Inbox inbox,
     @Valid @DefaultValue Payload payload,
+    @Valid @DefaultValue Slo slo,
+    @Valid @DefaultValue Proposals proposals,
     @DefaultValue("360") @Min(1) int maxInFlight,
     @DefaultValue("5") @Min(1) int metricsSamplePeriodSeconds) {
 
@@ -47,6 +49,7 @@ public record WorkerProperties(
       @DefaultValue("sqs") String type,
       String fastQueueUrl,
       String standardQueueUrl,
+      String dlqQueueUrl,
       @DefaultValue("20") @Min(10) int prefetch,
       @DefaultValue("5") @Min(0) int waitSeconds,
       @DefaultValue("30") @Min(1) int visibilityTimeoutSeconds,
@@ -64,4 +67,19 @@ public record WorkerProperties(
       String kmsKeyId,
       @DefaultValue("10000") @Min(1) int kmsDataKeyMaxUses,
       @DefaultValue("PT5M") Duration kmsDataKeyMaxAge) {}
+
+  /** Avaliador de prazos do SLO J2 ({@code docs/sre/slo.md}); requer o DurableInbox no DynamoDB. */
+  public record Slo(
+      @DefaultValue("true") boolean enabled,
+      @DefaultValue("2m") Duration fastDeadline,
+      @DefaultValue("45m") Duration standardDeadline,
+      @DefaultValue("15s") Duration evaluationPeriod,
+      @DefaultValue("500") @Min(1) int batchSize) {}
+
+  /**
+   * Estado do Worker: {@code memory} (padrao, testes) ou {@code dynamodb} (duravel, S5; requer o
+   * DurableInbox em DynamoDB).
+   */
+  public record Proposals(
+      @DefaultValue("memory") String type, @DefaultValue("WorkerProposal") String tableName) {}
 }

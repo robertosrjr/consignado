@@ -327,7 +327,7 @@
 ## Construction U1 - Metricas de negocio
 **Timestamp**: 2026-10-08T01:30:00Z
 **User Input**: "Vamos fazer as métricas. avalie as métricas de negócio sugeridas e vamos implementalas. veja se faz sentido e se precisamos de todas ou de mais algumas\ndocs\brainstorming\metricas-de-negocio-poc"
-**AI Response**: Avaliacao em docs/brainstorming/metricas-de-negocio-avaliacao.md (10 de 11 metricas cobertas ou implementadas; Spread/CET e saldo devedor fora do contrato atual). Implementado no Worker: porta BusinessObserver, fato ProposalSettlement, BusinessMetrics (business.vgv, business.partner.settled, business.first.pass, business.time.to.settle); na borda: business.vgv.received e business.partner.received. Metrica extra proposta e aceita: business.time.to.settle (SLA da virada).
+**AI Response**: Avaliacao em docs/brainstorming/Fase-01/metricas-de-negocio-avaliacao.md (10 de 11 metricas cobertas ou implementadas; Spread/CET e saldo devedor fora do contrato atual). Implementado no Worker: porta BusinessObserver, fato ProposalSettlement, BusinessMetrics (business.vgv, business.partner.settled, business.first.pass, business.time.to.settle); na borda: business.vgv.received e business.partner.received. Metrica extra proposta e aceita: business.time.to.settle (SLA da virada).
 **Context**: Construction U1, Code Generation. Build completo: 353 testes, BUILD SUCCESS.
 
 ---
@@ -335,7 +335,7 @@
 ## Avaliacao das metricas de aplicacao
 **Timestamp**: 2026-10-08T02:00:00Z
 **User Input**: "faça uma avaliação no arquivo metricas-de-aplicacao-poc"
-**AI Response**: docs/brainstorming/metricas-de-aplicacao-avaliacao.md. 10 de 21 metricas cobertas (outros nomes), 4 parciais, 4 a criar, 3 fora da fase. Apontados erros nos alertas propostos (rate() sobre gauge; janela de 5s menor que o scrape; codificacao do circuit breaker 1=semi-aberto e 2=aberto) e texto desatualizado (Java 21, Aurora).
+**AI Response**: docs/brainstorming/Fase-01/metricas-de-aplicacao-avaliacao.md. 10 de 21 metricas cobertas (outros nomes), 4 parciais, 4 a criar, 3 fora da fase. Apontados erros nos alertas propostos (rate() sobre gauge; janela de 5s menor que o scrape; codificacao do circuit breaker 1=semi-aberto e 2=aberto) e texto desatualizado (Java 21, Aurora).
 **Context**: Construction U1. Nenhum codigo alterado nesta etapa.
 
 ---
@@ -571,3 +571,168 @@
 **Context**: Atualização documental solicitada para que o usuário salve as imagens nos locais indicados e o artigo as exiba.
 
 ---
+
+## Novo incremento — evolução de SRE (Requirements Analysis)
+**Timestamp**: 2026-10-23T15:10:00-03:00
+**User Input**: "Eu preciso que analisamos o que temos de SRE nesse projeto e preciso de um plano para evoluir, levar esse projeto a outro patamar.
+Analise o projeto C:\Developer\Workspace\java\consignado
+Com ajuda do caderno vamos elaborar um plano. de evolução
+https://notebook.google.com/notebook/d39696f8-23ef-4e9b-8e1f-ffa7d13ec5c7" / "Use o Claude in Chrome para ler o caderno, já estou logado lá." / "https://notebook.google.com/notebook/d39696f8-23ef-4e9b-8e1f-ffa7d13ec5c7"
+**AI Response**: Repositorio analisado; caderno lido pelo navegador embutido (Chrome desconectado). Gerados `inception/sre-evolucao/plano-evolucao-sre.md` (diagnostico, divergencias com o caderno, ondas S0-S7) e `sre-evolucao-questions.md` (Q1-Q5 com sugestoes). Nenhum codigo alterado.
+**Context**: Workspace Detection brownfield com artefatos SRE existentes; aguardando respostas antes de aprovar requisitos.
+
+---
+
+## Evolucao de SRE — pedido de execucao
+**Timestamp**: 2026-10-23T15:40:00-03:00
+**User Input**: "vamos evoluir a Poc com os planos de evolução descritos no documento plano-evolucao-sre.md: diagnóstico, cruzamento com o caderno e o roteiro.
+sre-evolucao-questions.md:" / "aidlc-docs/inception/sre-evolucao/"
+**AI Response**: Verificado que Q1-Q5 seguem sem resposta; respostas solicitadas ao usuario antes de aprovar requisitos e planejar unidades.
+**Context**: Requirements Analysis do incremento sre-evolucao, aguardando respostas.
+
+---
+
+## Evolucao de SRE — respostas e requisitos
+**Timestamp**: 2026-10-23T15:45:00-03:00
+**User Input**: "Q1=B: S0–S6 (Recomendado); Q2=B: J1 99,5% (Recomendado); Q3=A: SQS → arquivo + e-mail (Recomendado); Q4=A: DynamoDB (Recomendado)"
+**AI Response**: Q5 assumida como A (pendente de confirmacao). Gerados `requirements.md` (RF-01..RF-10, RNF-01..RNF-07) e `workflow-plan.md`. Aprovacao solicitada.
+**Context**: Requirements Analysis + Workflow Planning do incremento sre-evolucao.
+
+---
+
+## Requirements Analysis — respostas Q1-Q5
+**Timestamp**: 2026-10-23T15:30:00-03:00
+**User Input**: "As respostas em sre-evolucao-questions.md ainda estão vazias. Registro o pedido no audit e colho as respostas aqui mesmo."
+**AI Response**: Arquivo conferido em disco: Q1 B, Q2 B, Q3 A, Q4 A preenchidas; Q5 "A (assumida pela sugestao; confirmar)". Solicitada confirmacao explicita de Q5 antes de aprovar requisitos.
+**Context**: Coleta de respostas; requisitos ainda nao aprovados.
+
+---
+
+## Evolucao de SRE — aprovacao
+**Timestamp**: 2026-10-23T15:50:00-03:00
+**User Input**: "pode começar"
+**AI Response**: Requisitos, workflow e Q5=A aprovados. Application Design adiado para S4/S5 (S0 nao cria componentes). Iniciada unidade S0.
+**Context**: Inicio da Construction, unidade S0.
+
+---
+
+## Evolucao de SRE — S0 (Code Generation)
+**Timestamp**: 2026-10-23T16:30:00-03:00
+**User Input**: "não vamos levar nada para AWS agora, vamos fazer tudo local" / "continue"
+**AI Response**: Q5 alterada para execucao local. promtool 3.5.0 baixado localmente. Detector OPEN/HALF_OPEN corrigido e teste L3 atualizado (todos os testes promtool SUCCESS). Artefatos pedidos-api removidos. L2 conciliado offline: INCOMPLETE definitivo. Evidencia em `construction/sre-s0/validation.md`.
+**Context**: Unidade S0 concluida; aguardando aprovacao.
+
+---
+
+## Evolucao de SRE — aprovacao S0, inicio S1
+**Timestamp**: 2026-10-23T16:40:00-03:00
+**User Input**: "Seguir para a S1"
+**AI Response**: S0 aprovada; iniciada S1 (documento de SLO e politica de error budget).
+**Context**: Construction, unidade S1.
+
+---
+
+## Evolucao de SRE — S1 concluida
+**Timestamp**: 2026-10-23T17:00:00-03:00
+**User Input**: (sem nova entrada)
+**AI Response**: Criado `docs/sre/slo.md` (SLO v1 J1/J2, politica de error budget, lacunas para S2) e `construction/sre-s1/summary.md`. Aprovacao solicitada.
+**Context**: Unidade S1, aguardando aprovacao.
+
+---
+
+## Evolucao de SRE — aprovacao S1, inicio S2
+**Timestamp**: 2026-10-23T17:10:00-03:00
+**User Input**: "Seguir para a S2"
+**AI Response**: S1 aprovada; iniciada S2 (medicao continua).
+**Context**: Construction, unidade S2.
+
+---
+
+## Evolucao de SRE — S2 Functional Design
+**Timestamp**: 2026-10-23T17:25:00-03:00
+**User Input**: "A: Decisão na Inbox (Recomendado)"
+**AI Response**: Avaliador de prazos J2 baseado em decisao gravada na Inbox, dueAt no roteamento e GSI esparso. Iniciada implementacao.
+**Context**: S2 functional design aprovado.
+
+---
+
+## Evolucao de SRE — S2 concluida
+**Timestamp**: 2026-10-23T18:40:00-03:00
+**User Input**: (sem nova entrada)
+**AI Response**: Implementados indice de prazos J2 na Inbox, DeadlineEvaluator, buckets de SLO, DLQ depth, recording rules e dashboard. Builds e ITs locais verdes; promtool SUCCESS. Evidencia em `construction/sre-s2/validation.md`. Aprovacao solicitada.
+**Context**: Unidade S2, aguardando aprovacao.
+
+---
+
+## Evolucao de SRE — aprovacao S2, inicio S3
+**Timestamp**: 2026-10-23T18:50:00-03:00
+**User Input**: "pode seguir"
+**AI Response**: S2 aprovada; iniciada S3 (alertas por burn rate).
+**Context**: Construction, unidade S3.
+
+---
+
+## Evolucao de SRE — S3 concluida
+**Timestamp**: 2026-10-23T19:30:00-03:00
+**User Input**: (sem nova entrada)
+**AI Response**: Alertas MWMB J1/J2, DLQ e frescor do avaliador; estaticos de erro/latencia removidos; promtool e amtool SUCCESS; worker 145 testes verdes. Evidencia em `construction/sre-s3/validation.md`. Aprovacao solicitada.
+**Context**: Unidade S3, aguardando aprovacao.
+
+---
+
+## Evolucao de SRE — aprovacao S3, inicio S4
+**Timestamp**: 2026-10-23T19:40:00-03:00
+**User Input**: "pode seguior"
+**AI Response**: S3 aprovada; iniciada S4 (resposta a incidentes), com functional design para o caminho local.
+**Context**: Construction, unidade S4.
+
+---
+
+## Evolucao de SRE — S4 concluida e pausa
+**Timestamp**: 2026-10-23T21:10:00Z
+**User Input**: "A: Via ElasticMQ (Recomendado)" / "quando terminar a tarefa pode pausar"
+**AI Response**: Implementados ponte webhook, fila sqs-alerts, consumidor com dedup e registro JSONL; Alertmanager local; template e postmortem do game day. Testes verdes; game day com episodio aberto/fechado. Processos encerrados. Trabalho pausado a pedido do usuario; S4 aguarda aprovacao.
+**Context**: Unidade S4 concluida; workflow pausado.
+
+---
+
+## Evolucao de SRE — pedido de status
+**Timestamp**: 2026-10-23T21:20:00Z
+**User Input**: "de forma bem breve e objetiva, me de o status das melhorias."
+**AI Response**: Resumo de status S0-S6 apresentado; workflow segue pausado.
+**Context**: Consulta de status.
+
+---
+
+## Evolucao de SRE — aprovacao S4, execucao S5 e S6
+**Timestamp**: 2026-10-23T21:30:00Z
+**User Input**: "pode seguir S4, S5, S6"
+**AI Response**: S4 aprovada; pausa encerrada; iniciada S5 seguida de S6.
+**Context**: Construction, unidades S5 e S6.
+
+---
+
+## Evolucao de SRE — retomada e validacao S5/S6
+**Data**: 2026-10-23 (America/Sao_Paulo)
+**User Input**: "reveja o plano ia-dlc e veja onde paramos" / "vamos seguir"
+**AI Response**: Retomada autorizada de S5/S6. Revisado codigo parcial existente; corrigida recuperacao da decisao na Inbox depois de terminal persistido e antes do ACK. Acrescentados testes de timeout apos commit, reconstrução de repositorio e Sweeper com emuladores reais. Desenhos S5 registrados e preparado ensaio progressivo S6 com replay e conciliacao persistida. Corrigidos status documentais antigos. Build restrito esbarrou no acesso ao cache Maven; execucao com acesso ao cache autorizada automaticamente. Nenhuma AWS acessada.
+**Context**: S5 em validacao; S6 aguarda resultado do build antes da carga.
+
+---
+
+## Evolucao de SRE — S5 validada, S6 com homologacao pendente
+**Data**: 2026-10-23 (America/Sao_Paulo)
+**User Input**: continuidade de "vamos seguir"
+**AI Response**: Build completo com integracao aprovado: 10 modulos, 473 testes, zero falhas/erros/ignorados. Queda real do worker validada com seis propostas/seis averbacoes unicas, incluindo replay terminal e propostas aceitas enquanto parado. S6 executada em quatro rodadas locais: primeiro FAIL por timeout do emulador; progressiva INCOMPLETE sob saturacao; confirmacoes de 60 s em 5 e 1 req/s preservaram conciliacao mas nao homologaram latencia. Ultima rodada: servidor p95 estimado 89 ms, p99 245 ms e 2,78% acima de 200 ms. Corrigida recording rule J1 sem serie 5xx; quatro suites promtool SUCCESS. Scripts e orquestrador local entregues, relatorio em docs/sre/capacidade-local.md. Nao afrouxados SLOs; S6 permanece pendente no estado. Processos locais encerrados, evidencias preservadas; nenhuma AWS acessada.
+**Context**: S5 validada; retomada S6 para investigar aceite/host e pacing do gerador, seguida de nova qualificacao.
+
+---
+
+---
+
+## Revisão documental e escopo da PoC
+**Data**: 23/10/2026 (America/Sao_Paulo)
+**User Input**: "ok, não vamos colocar" (MFA) / "atualize todas a documnetações, procure por redundancias, inconsistencias, e qualquer outro problema, deixe o mais simples, direto e humano possivel."
+**AI Response**: Atualizados índices, estado, guias de módulos, jornada, contexto, SLOs e alertas; corrigidos caminhos após reorganização de pastas. Documentação atual separada do fechamento de 18/10 e dos estudos. Registrada exclusão de MFA, step-up e aprovação transacional. Guias SRE e de alertas simplificados, com referências às fontes responsáveis. Nenhum código de aplicação ou recurso AWS alterado nesta revisão.
+**Validação**: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File applications/scripts/check-doc-links.ps1`: 226 documentos, zero destinos locais ausentes. `git diff --check`: aprovado na configuração do repositório. Sem nova execução Java/carga; 473 testes permanecem evidência anterior da S5. URLs externas, âncoras e conteúdo normativo dos materiais históricos não foram revalidados. Relatório: `docs/auditoria-documentacao-2026-10-23.md`.
+**Context**: S0–S5 validadas; S6 pendente por p99. Próximo trabalho: investigar aceite/host e ritmo do gerador antes de repetir a qualificação, mantendo os SLOs.

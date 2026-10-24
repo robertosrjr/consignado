@@ -1,5 +1,7 @@
 # applications — projeto Maven multi-módulo
 
+Última validação registrada: build completo com integração, 473 testes aprovados em 23/10/2026. [Evidência e limites](../aidlc-docs/construction/sre-s5/validation.md). A homologação de desempenho continua pendente.
+
 Código da PoC. Java 25, Maven 3.9+, Spring Boot 4.1.1. Veja o [contexto de negócio](../docs/narrativas/contexto-e-objetivos.md), a [visão técnica](../docs/manuais/visao-tecnica.md) e o [guia do ambiente local](../docs/manuais/ambiente-local.md).
 
 ## Módulos
@@ -97,4 +99,4 @@ As regras detalhadas estão nas skills em `../.claude/skills/` — carregue a do
 
 ## Observabilidade local
 
-Não há stack local. Os serviços expõem `/actuator/prometheus` para raspagem; a instrumentação W3C e o SDK estão disponíveis localmente, com exportação opcional; a entrega no Jaeger ainda precisa de validação. A configuração do Grafana e do CloudWatch está em [observability/](observability/) e a stack roda no EC2 (ver [infrastructure/](../infrastructure/)).
+Os serviços expõem `/actuator/prometheus`. O ensaio S6 usa Prometheus local com scrape direto; a configuração histórica da EC2 usa Pushgateway. A jornada de quatro serviços já foi observada no Jaeger com dispatcher local; runtime Lambda/AWS continua sem validação. Consulte o [guia SRE](../docs/sre/README.md), os [dashboards](observability/grafana/dashboards/README.md) e a [capacidade local](../docs/sre/capacidade-local.md).

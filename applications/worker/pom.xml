@@ -88,9 +88,23 @@
     </dependency>
   </dependencies>
 
+  <properties>
+    <!-- ITs dependem do local-env (so no perfil integration); fora dele nao sao compilados -->
+    <it.sources.exclude>**/*IT.java</it.sources.exclude>
+  </properties>
+
   <build>
     <finalName>app</finalName>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <testExcludes>
+            <testExclude>${it.sources.exclude}</testExclude>
+          </testExcludes>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
@@ -108,6 +122,9 @@
     <!-- Testes de integracao SEM Docker: DynamoDB Local e ElasticMQ embarcados (modulo local-env) -->
     <profile>
       <id>integration</id>
+      <properties>
+        <it.sources.exclude>none/**</it.sources.exclude>
+      </properties>
       <dependencies>
         <dependency>
           <groupId>${project.groupId}</groupId>

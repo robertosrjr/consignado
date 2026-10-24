@@ -129,7 +129,7 @@ O Worker tem duas partes: o laço de despacho, que decide **quando** retirar uma
 
 Máquina de estados: `PENDING → SENT_TO_LEGACY → CONFIRMED | FAILED`. Nenhuma chamada ao legado acontece depois de um estado terminal. Ao fim, o `BusinessObserver` registra as métricas de negócio, entre elas o tempo total desde o recebimento na borda.
 
-**Adaptadores:** `SqsLaneQueueAdapter` ou `InMemoryLaneQueue`; `DynamoDbInboxReadAdapter` ou `InMemoryInboxReadAdapter`; `LegacyHttpAdapter`, envolvido por `CircuitBreakerAvailabilityAdapter` e `MeteredLegacyCorePort`; `InMemoryProposalRepository`, já que a persistência relacional fica em memória nesta fase.
+**Adaptadores:** `SqsLaneQueueAdapter` ou `InMemoryLaneQueue`; `DynamoDbInboxReadAdapter` ou `InMemoryInboxReadAdapter`; `LegacyHttpAdapter`, envolvido por `CircuitBreakerAvailabilityAdapter` e `MeteredLegacyCorePort`; `DynamoDbProposalRepository` no fluxo local ou `InMemoryProposalRepository` no modo isolado. A S5 persiste estado e histórico transacionalmente e recupera a decisão da Inbox antes do ACK. O DynamoDB Local continua em memória; ver [evidências e limites](../../aidlc-docs/construction/sre-s5/validation.md).
 
 ---
 

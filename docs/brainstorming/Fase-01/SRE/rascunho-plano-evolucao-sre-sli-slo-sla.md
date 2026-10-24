@@ -50,7 +50,7 @@ Esta matriz descreve o conteúdo local inspecionado. Configuração no repositó
 | Capacidade | Evidência local | Limite atual |
 |---|---|---|
 | Aceite e idempotência técnica | `AcceptProposalService`, `DynamoDbInboxAdapter`, `ProposalController`; resposta nova ou `DUPLICATE_ACCEPTED`. | Persistência local em memória não demonstra durabilidade após reinício. Um 202 não comprova conclusão no legado. |
-| Business Fingerprint v2 | Adaptador transacional, configuração e [documentação de implementação](../../business-fingerprint-v2-implementacao.md). | Recurso desabilitado por padrão; ativação e recursos AWS são uma entrega separada. |
+| Business Fingerprint v2 | Adaptador transacional, configuração e [documentação de implementação](../../../business-fingerprint-v2-implementacao.md). | Recurso desabilitado por padrão; ativação e recursos AWS são uma entrega separada. |
 | Roteamento e consumo | Dispatcher, filas fast/standard, orçamento de capacidade, retries e circuit breaker no worker. | Execução distribuída e todas as janelas móveis de 1 s exigem comprovação própria. |
 | Estado terminal do worker | `InMemoryProposalRepository`, eventos e observador de negócio. | Estado perdido no reinício; não equivale a Aurora, outbox durável ou coordenação entre réplicas. |
 | Métricas de negócio | `business_vgv_received_brl_count/_sum`, `business_vgv_brl_count/_sum`, timer `business.time.to.settle`. | Contadores locais à JVM; timer registra somente propostas que chegaram à finalização observada. |
@@ -59,7 +59,7 @@ Esta matriz descreve o conteúdo local inspecionado. Configuração no repositó
 | Alertas | Sete regras em `consignado-sre.yml` e testes de regras no repositório. | Limiares estáticos, ainda sem política de orçamento de erro operacionalizada. |
 | Entrega de alertas | Configuração nativa Alertmanager → SNS → SQS, com `send_resolved`. | Entrega em fila não comprova atendimento humano, reconhecimento e escalonamento. |
 | Logs | JSON/ECS, correlação e customizador de mascaramento no starter. | Formato e mascaramento não comprovam retenção, busca centralizada ou ausência de todo dado sensível. |
-| Traces | Propagação W3C API → Inbox → dispatcher → SQS → worker → legado implementada e testada localmente. | Visualização e entrega OTLP no Jaeger ainda precisam de validação; ver [guia de tracing local](../../manuais/tracing-local.md). |
+| Traces | Propagação W3C API → Inbox → dispatcher → SQS → worker → legado implementada e testada localmente. | Visualização e entrega OTLP no Jaeger ainda precisam de validação; ver [guia de tracing local](../../../manuais/tracing-local.md). |
 | Histórico de métricas | Compose define retenção padrão de 15 dias no Prometheus. | Não sustenta sozinho uma avaliação de 30 dias. Paradas e limpezas também removem evidências. |
 
 O parent Maven atual declara **Java 25 e Spring Boot 4.1.1**. O Java 21 usado para abrir o JMeter é um requisito da ferramenta de carga, separado da versão da aplicação.
@@ -420,14 +420,14 @@ Essas decisões não impedem começar P0/P1 com massa pequena e relatório expl�
 
 Todos os caminhos abaixo são relativos à raiz do repositório, salvo os links de navegação:
 
-- [Estado atual](../../estado-atual.md), [auditoria de idempotência](../../auditoria-idempotencia.md), [Business Fingerprint v2](../../business-fingerprint-v2-implementacao.md) e [tracing local](../../manuais/tracing-local.md).
-- [Parent Maven](../../../applications/pom.xml), configurações `ingestion-api/src/main/resources/application.yml` e `worker/src/main/resources/application.yml`, dentro de `applications`.
+- [Estado atual](../../../estado-atual.md), [auditoria de idempotência](../../../auditoria-idempotencia.md), [Business Fingerprint v2](../../../business-fingerprint-v2-implementacao.md) e [tracing local](../../../manuais/tracing-local.md).
+- [Parent Maven](../../../../applications/pom.xml), configurações `ingestion-api/src/main/resources/application.yml` e `worker/src/main/resources/application.yml`, dentro de `applications`.
 - API: `MeteredAcceptProposalUseCase`, `ProposalController`, `DynamoDbInboxAdapter` e `BusinessFingerprintInboxAdapter`.
 - Dispatcher: `PriorityScorer`, `PriorityRules` e serviço de despacho.
 - Worker: `ProcessProposalService`, `InMemoryProposalRepository`, `BusinessMetrics`, `WorkerMetrics`, `BacklogEstimator` e `SqsLaneQueueAdapter`.
 - Mock legado: `AverbacaoController`, `AverbacaoLedger`, `CapacityGate` e `LegacyMetrics`.
-- [Dashboards versionados e fórmulas](../../../applications/observability/grafana/dashboards/README.md).
-- [Regras SRE](../../../infrastructure/Configuration/observability/config/prometheus/rules/consignado-sre.yml), [testes das regras](../../../infrastructure/Configuration/observability/config/prometheus/tests/consignado-sre.test.yml) e [runbooks](../../../infrastructure/Configuration/observability/ALERTAS.md).
-- [Configuração de coleta](../../../infrastructure/Configuration/observability/config/prometheus/prometheus.yml), [Alertmanager](../../../infrastructure/Configuration/observability/config/alertmanager/alertmanager.yml) e [Compose da observabilidade](../../../infrastructure/Configuration/observability/compose.sem-elasticsearch.yaml).
+- [Dashboards versionados e fórmulas](../../../../applications/observability/grafana/dashboards/README.md).
+- [Regras SRE](../../../../infrastructure/Configuration/observability/config/prometheus/rules/consignado-sre.yml), [testes das regras](../../../../infrastructure/Configuration/observability/config/prometheus/tests/consignado-sre.test.yml) e [runbooks](../../../../infrastructure/Configuration/observability/ALERTAS.md).
+- [Configuração de coleta](../../../../infrastructure/Configuration/observability/config/prometheus/prometheus.yml), [Alertmanager](../../../../infrastructure/Configuration/observability/config/alertmanager/alertmanager.yml) e [Compose da observabilidade](../../../../infrastructure/Configuration/observability/compose.sem-elasticsearch.yaml).
 
 Os números de capacidade e as metas sugeridas neste rascunho são cálculos e hipóteses específicos da PoC. Não são garantias do Google, da AWS ou do mercado de crédito.

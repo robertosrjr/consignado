@@ -1,13 +1,17 @@
 package br.com.consignado.platform.dispatcher.config;
 
 import br.com.consignado.platform.dispatcher.aws.DynamoInboxStatusUpdater;
+import br.com.consignado.platform.dispatcher.aws.DynamoPendingDispatchReader;
 import br.com.consignado.platform.dispatcher.aws.SqsQueuePublisher;
 import br.com.consignado.platform.dispatcher.dispatch.BatchDispatcher;
 import br.com.consignado.platform.dispatcher.dispatch.DispatchService;
+import br.com.consignado.platform.dispatcher.dispatch.OrphanSweeper;
 import br.com.consignado.platform.dispatcher.routing.LaneRouter;
 import br.com.consignado.platform.dispatcher.routing.PriorityRules;
 import br.com.consignado.platform.dispatcher.routing.PriorityScorer;
 import br.com.consignado.platform.shared.vo.Money;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -80,13 +84,26 @@ public final class DispatcherConfig {
 
   /** Monta o despachador de lotes com os clientes AWS informados. */
   public BatchDispatcher batchDispatcher(SqsClient sqs, DynamoDbClient dynamo) {
-    DispatchService service =
-        new DispatchService(
-            new PriorityScorer(rules),
-            new LaneRouter(rules.fastThreshold()),
-            new SqsQueuePublisher(sqs, fastQueueUrl, standardQueueUrl),
-            new DynamoInboxStatusUpdater(dynamo, inboxTable));
-    return new BatchDispatcher(service);
+    return new BatchDispatcher(dispatchService(sqs, dynamo));
+  }
+
+  /** Varredura de orfaos com o mesmo despacho do Stream (carencia evita corrida com o Stream). */
+  public OrphanSweeper orphanSweeper(
+      SqsClient sqs, DynamoDbClient dynamo, Clock clock, Duration grace, int batchSize) {
+    return new OrphanSweeper(
+        new DynamoPendingDispatchReader(dynamo, inboxTable),
+        dispatchService(sqs, dynamo),
+        clock,
+        grace,
+        batchSize);
+  }
+
+  private DispatchService dispatchService(SqsClient sqs, DynamoDbClient dynamo) {
+    return new DispatchService(
+        new PriorityScorer(rules),
+        new LaneRouter(rules.fastThreshold()),
+        new SqsQueuePublisher(sqs, fastQueueUrl, standardQueueUrl),
+        new DynamoInboxStatusUpdater(dynamo, inboxTable));
   }
 
   private static String required(Map<String, String> env, String name) {

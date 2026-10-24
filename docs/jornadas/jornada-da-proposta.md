@@ -112,7 +112,7 @@ Cada proposta termina em um de dois estados definitivos:
 
 Esses estados são **definitivos**. Se, por qualquer motivo técnico, a mesma proposta chegar de novo ao final do caminho, a plataforma reconhece que ela já foi resolvida e **não chama o Core Banking outra vez**. Mesmo que um envio seja repetido, o Core Banking recebe o mesmo código único e devolve o resultado original em vez de averbar duas vezes.
 
-Propostas que não conseguem ser concluídas depois de várias tentativas, por falha técnica persistente, vão para uma **fila de análise**, onde ficam disponíveis para tratamento pela operação. Nenhuma é descartada em silêncio.
+Propostas que esgotam as tentativas por falha técnica seguem para a **DLQ**, uma fila para investigação e eventual reprocessamento. O tratamento operacional completo dessa fila ainda não foi homologado.
 
 ---
 
@@ -137,24 +137,25 @@ sequenceDiagram
 | Passo | Ganho |
 |---|---|
 | 2. Cota por parceiro | nenhum correspondente monopoliza a capacidade |
-| 3. Gravar e responder "recebido" | nenhuma proposta perdida; o banco fica de pé enquanto concorrentes caem |
-| 3. Reconhecer repetições | zero averbação dupla; conformidade com Febraban, ABBC, INSS e eSocial |
+| 3. Gravar e responder "recebido" | aceite separado do processamento; recuperação conforme a persistência disponível |
+| 3. Reconhecer repetições | redução de efeitos duplicados, dependente da identidade e da idempotência do destino |
 | 4 e 5. Prioridade 70/30 | mais volume financeiro (VGV) averbado nos primeiros minutos |
-| 6. Ritmo seguro | o Core Banking não cai; sem acionamento de emergência de madrugada |
-| 7. Estados definitivos | rastreabilidade completa de cada proposta |
+| 6. Ritmo seguro | controle das chamadas para respeitar o teto configurado do legado |
+| 7. Estados definitivos | resultado e histórico da proposta no repositório selecionado |
 
 ## Como acompanhar a jornada ao vivo
 
 Durante o teste de homologação, os painéis mostram:
 
 - **quantas propostas a plataforma recebeu** por segundo e quantas eram repetições;
-- **a linha do Core Banking**, que deve ficar reta em 180 por segundo, sem ultrapassar;
+- **a vazão do Core Banking**, comparada com o teto nominal de 180 por segundo; o valor observado depende da carga, das retentativas e do ambiente;
 - **a divisão entre as filas**, com a prioritária recebendo pelo menos 70% sempre que as duas têm propostas esperando;
 - **o volume financeiro averbado** ao longo do tempo;
 - **o tempo estimado para esvaziar as filas** depois do pico.
 
 ## Limites desta PoC
 
+- Esta jornada ilustra o comportamento esperado. A S6 ainda não homologou capacidade sustentada; consulte o [estado atual](../estado-atual.md).
 - O Core Banking é **simulado**: ele imita a capacidade de 180 por segundo e recusa o excesso, servindo de juiz do experimento.
 - A operação com **seguro acoplado** aparece nos objetivos de prioridade, mas ainda não entra na pontuação. Hoje contam apenas parceiro VIP, valor e portabilidade.
 - Spread, CET e saldo devedor da portabilidade não fazem parte do contrato atual da proposta.

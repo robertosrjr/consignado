@@ -7,7 +7,7 @@ global:
   scrape_timeout: 10s
   evaluation_interval: 15s
   external_labels:
-    monitor: pedidos-monitor
+    monitor: consignado-monitor
     region: sa-east-1
 
 alerting:
@@ -21,7 +21,7 @@ rule_files:
 
 scrape_configs:
   # Métricas enviadas pela aplicação ao Pushgateway.
-  # honor_labels preserva job/instance definidos no push (ex.: job="pedidos-api"),
+  # honor_labels preserva job/instance definidos no push (ex.: job="worker"),
   # que são usados nas regras de alerta.
   - job_name: pushgateway
     honor_labels: true

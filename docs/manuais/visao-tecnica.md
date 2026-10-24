@@ -27,7 +27,7 @@ As duas filas existem porque, com fila única, uma proposta de alto valor entrar
 | Garantia | Como é obtida | Onde provar |
 |---|---|---|
 | Durabilidade do aceite | escrita antes do `202`; DynamoDB na AWS, emulador em memória localmente | `ingestion-api` |
-| Deduplicação de chave técnica | escrita condicional no Inbox + estados finais em memória; persistência e concorrência do worker pendentes | `ingestion-api`, `worker` |
+| Deduplicação de chave técnica | escrita condicional na Inbox + estados finais do worker; modo DynamoDB validado na S5, com limites no destino e nas métricas | `ingestion-api`, `worker` |
 | Meta de proteção do legado | orçamento de vazão por janela, com margem entre instâncias | `worker`, `mock-legacy` |
 | Prioridade para o alto valor | duas filas com piso de 70/30 e empréstimo | `dispatcher-lambda`, `worker` |
 
@@ -51,12 +51,12 @@ Quatro restrições moldaram o desenho e explicam escolhas que de outro modo par
 
 - **Java 25**, não 21 como nas narrativas. O código conta com o comportamento do Java 25 em `synchronized` sob threads virtuais (JEP 491).
 - **Sem Docker** na máquina de desenvolvimento. Daí os emuladores embarcados em vez de Testcontainers.
-- **Persistência de estados do worker e ledger do legado em memória** nesta fase, no lugar do Aurora citado nas narrativas. Na AWS, o DurableInbox usa DynamoDB; no ambiente local, DynamoDB Local roda em memória e perde os dados ao reiniciar.
+- **Estado e histórico do worker em DynamoDB no fluxo local**, em vez do Aurora das narrativas. O padrão isolado continua `memory`. DynamoDB Local e ledger do mock rodam em memória: reiniciar o worker preservando os emuladores foi validado; reiniciar todo o ambiente perde os dados.
 - **Custo de nuvem sob controle.** Nada de NAT Gateway permanente; o ambiente é criado e destruído em volta dos testes.
 
 ## Privacidade (LGPD)
 
-A telemetria é construída para não vazar dado pessoal, em duas camadas: **minimização** (handlers de erro não registram mensagem nem stack trace de exceção) e uma **rede de proteção** que mascara CPF, cartão, telefone e e-mail em todo valor de texto do JSON de log, nos quatro serviços. O CPF existe em um lugar só — cifrado no DurableInbox — e a mensagem de fila nunca o carrega.
+A telemetria é construída para não vazar dado pessoal, em duas camadas: **minimização** (handlers de erro não registram mensagem nem stack trace de exceção) e uma **rede de proteção** que mascara CPF, cartão, telefone e e-mail em todo valor de texto do JSON de log, nos quatro serviços. O payload do cliente fica cifrado no DurableInbox. O CPF é decifrado para processamento e enviado ao legado, mas não é incluído na mensagem de fila nem deve aparecer na telemetria.
 
 Detalhes e a implementação única: [platform-starter](../../applications/platform-starter/README.md).
 

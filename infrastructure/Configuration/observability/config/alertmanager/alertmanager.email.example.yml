@@ -41,9 +41,9 @@ receivers:
 
 inhibit_rules:
   # Nao repetir aviso de latencia quando o mesmo servico apresenta erros criticos.
-  - source_matchers: ['alertname="ConsignadoIngestionErrors"']
-    target_matchers: ['alertname="ConsignadoIngestionLatency"']
-    equal: [env, service, instance]
+  - source_matchers: ['alertname=~"Consignado.+BurnFast"']
+    target_matchers: ['alertname=~"Consignado.+BurnSlow"']
+    equal: [slo, lane]
   # Causa conhecida do backlog evita uma cascata de avisos.
   - source_matchers: ['alertname="ConsignadoLegacyUnavailable"']
     target_matchers: ['alertname=~"ConsignadoWorkerStalled|ConsignadoBacklogDelayed"']

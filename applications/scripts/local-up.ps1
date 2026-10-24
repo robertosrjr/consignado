@@ -49,7 +49,10 @@ $state = Join-Path $root '.local'
 $logs = Join-Path $state 'logs'
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
 $sreWorkerArgs = @()
+# Estado do worker duravel (DynamoDB Local); a captura SRE de experimento exige o modo memoria
+$proposalsType = 'dynamodb'
 if ($SreCapture) {
+    $proposalsType = 'memory'
     $sreDirectory = Join-Path $state 'sre'
     [void][IO.Directory]::CreateDirectory($sreDirectory)
     $sreWorkerArgs = @('-Dworker.sre.capture-file="' + (Join-Path $sreDirectory 'worker-snapshot.json') + '"')
@@ -188,6 +191,8 @@ try {
         WORKER_PAYLOAD_LOCAL_KEY = $payloadKey
         WORKER_QUEUE_FAST_URL = "$sqsUrl/000000000000/sqs-fast-lane-queue"
         WORKER_QUEUE_STANDARD_URL = "$sqsUrl/000000000000/sqs-standard-lane-queue"
+        WORKER_QUEUE_DLQ_URL = "$sqsUrl/000000000000/sqs-dlq"
+        WORKER_PROPOSALS_TYPE = $proposalsType
     }) -JavaArgs ($sreWorkerArgs + @('-jar', $jars.worker))
 
     Wait-Port 8080 'ingestion-api'

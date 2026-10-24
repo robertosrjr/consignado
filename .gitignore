@@ -1,3 +1,8 @@
 
 # Estado gerado pelo local-up.ps1
 applications/.local/
+
+# Logs locais de build e execucao
+/logs/
+*.log
+*.log.*

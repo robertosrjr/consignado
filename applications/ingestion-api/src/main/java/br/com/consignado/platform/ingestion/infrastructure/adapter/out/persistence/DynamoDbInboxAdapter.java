@@ -99,6 +99,7 @@ public final class DynamoDbInboxAdapter implements DurableInboxPort {
     attributes.put(InboxAttributes.AMOUNT, n(item.amount().amount().toPlainString()));
     attributes.put(InboxAttributes.PAYLOAD, s(item.protectedPayload()));
     attributes.put(InboxAttributes.STATUS, s(InboxAttributes.STATUS_RECEIVED));
+    attributes.put(InboxAttributes.DISPATCH_PENDING, s(InboxAttributes.DISPATCH_PENDING_VALUE));
     attributes.put(InboxAttributes.CREATED_AT, n(Long.toString(item.createdAtEpochMillis())));
     attributes.put(InboxAttributes.TTL, n(Long.toString(item.ttlEpochSeconds())));
     attributes.put(InboxAttributes.TRACING_ID, s(item.tracingId()));

@@ -4,8 +4,8 @@
 - **Project Name**: Platform Engine - PoC Credito Consignado (Ingestao Massiva e Resiliencia)
 - **Project Type**: Brownfield (origem greenfield; incremento SRE em 17/10/2026)
 - **Start Date**: 2026-10-07T12:51:04Z
-- **Current Stage**: ENCERRADO — PoC de SRE e observabilidade concluida em 18/10/2026, com objetivos centrais atingidos. Itens nao executados foram reclassificados como backlog para uma nova fase; nao representam trabalho ativo desta PoC. Relatorio: `docs/sre/fechamento-poc-sre-observabilidade.md`.
-- **Last Validation**: 18/10/2026 - L1 real com cinco propostas/cinco replays, cinco confirmadas, filas/DLQ vazias e trace 503->200. Correcao do coletor: sete testes focados sem falhas e nova captura com cobertura completa. Ver `construction/sre-r1/validation.md`.
+- **Current Stage**: CONSTRUCTION — incremento evolucao SRE de 23/10/2026, S5 validada; S6 com ensaios e relatorio entregues, homologacao pendente por p99. Ambiente local encerrado, sem AWS. Retomada em `construction/sre-s6/validation.md`. A PoC anterior foi encerrada em 18/10/2026.
+- **Last Validation**: 23/10/2026 - build completo com integracao, 10 modulos e 473 testes sem falhas/erros/ignorados; S5 com reinicio real do worker e seis propostas/seis averbacoes unicas. S6 com quatro rodadas encerradas e homologacao pendente por p99; falhas preservadas. Log do build em `logs/s5-final.log`; evidencias em `construction/sre-s5/validation.md`, `construction/sre-s6/validation.md` e `.local/` de applications. Historico L1 de 18/10 em `construction/sre-r1/validation.md`.
 - **R0 Validation**: 17/10/2026 - `mvn -pl mock-legacy -am verify`: BUILD SUCCESS, parent + 4 modulos, 139 testes, sem falhas/erros, gates de formatacao e cobertura aprovados. Nao e build completo da aplicacao. Evidencia em `construction/sre-r0/validation.md`.
 - **Last Build (historico)**: 2026-10-09 - `mvn verify` BUILD SUCCESS, 9 modulos, 356 testes, 0 falhas; gates de cobertura (80%), Spotless, Enforcer e ArchUnit aprovados. Nao representa validacao do codigo atual; nenhum build executado no incremento documental.
 
@@ -44,6 +44,10 @@
 - **Pausa posterior (18/10/2026)**: "vaoms pausar os testes e deixar para depois". Sem novas coortes. Falha da tentativa L2 restaurada; ambiente mantido ligado. Artefatos L2 em `applications/.local/legacy-l2-20261018-01/` e `02/`; trace da tentativa02 `5cf549257710db75df51aac27a25df16`. Harness bruto02 INCOMPLETE por ExitCode nulo no Windows, apesar de JMeter concluir; preservar resultado original e concluir verificacao das fontes antes de marcar L2 completo.
 - **Encerramento posterior autorizado**: "pode desligar os ambinetes e a EC2 para evitar gastos". Login AWS renovado pelo usuario; parada concluida e verificada em 18/10/2026 12:19. Testes continuam pausados. Na retomada, iniciar ambiente conscientemente, obter IP atual e conferir os artefatos L2 ja coletados antes de qualquer reenvio.
 
+## Escopo confirmado em 23/10/2026
+
+MFA, step-up e aprovação transacional ficam fora da PoC por decisão do usuário. Os documentos em `docs/brainstorming/MFA/` permanecem como estudos. Continuar a S6 sem ampliar o escopo.
+
 ## Stage Progress - historico da entrega inicial
 
 As secoes abaixo preservam o registro anterior. Pendencias, contagens e afirmacoes de observabilidade pertencem ao momento em que foram registradas; nao substituem a baseline de 17/10 acima nem revogam aprovacoes anteriores.
@@ -78,8 +82,8 @@ As secoes abaixo preservam o registro anterior. Pendencias, contagens e afirmaco
 - **Java version**: 25 (LTS). Overrides "Java 21" in sdd/ documents. Spring Boot version to be set in requirements (3.3 from sdd is superseded).
 
 ## Observabilidade e conformidade (decidido nesta sessao)
-- **Metricas de negocio**: implementadas (business.vgv, business.vgv.received, business.partner.*, business.first.pass, business.time.to.settle). Avaliacao em `docs/brainstorming/metricas-de-negocio-avaliacao.md`. Fora do contrato atual: Spread/CET e saldo devedor da portabilidade
-- **Metricas de aplicacao**: avaliacao em `docs/brainstorming/metricas-de-aplicacao-avaliacao.md`. Saturacao fechada (worker.in.flight / worker.in.flight.max). Pendentes: timer de escrita no DynamoDB, gauges de orcamento por lane, metricas do Tomcat, dependencia micrometer-java21, alertas corrigidos
+- **Metricas de negocio**: implementadas (business.vgv, business.vgv.received, business.partner.*, business.first.pass, business.time.to.settle). Avaliacao em `docs/brainstorming/Fase-01/metricas-de-negocio-avaliacao.md`. Fora do contrato atual: Spread/CET e saldo devedor da portabilidade
+- **Metricas de aplicacao**: avaliacao em `docs/brainstorming/Fase-01/metricas-de-aplicacao-avaliacao.md`. Saturacao fechada (worker.in.flight / worker.in.flight.max). Pendentes: timer de escrita no DynamoDB, gauges de orcamento por lane, metricas do Tomcat, dependencia micrometer-java21, alertas corrigidos
 - **LGPD**: `LogSanitizer` + `PiiRedactingJsonMembersCustomizer` em `platform-starter` mascaram PII em todo o JSON de log dos 4 servicos; handlers nao registram mensagem nem stack trace de excecao. Provado por `PiiNeverReachesTheConsoleTest`
 - **Swagger UI**: falha fechada (desligado por padrao); ligado no ambiente local por `scripts/local-up.ps1`
 - **Grafana**: CloudWatch como fonte de dados (SQS/DLQ, Lambda, DynamoDB, EMF do Dispatcher); Prometheus para a aplicacao; Pushgateway mantido ate a aplicacao subir; sem Elasticsearch por ora (Jaeger com Badger)
@@ -99,3 +103,21 @@ As secoes abaixo preservam o registro anterior. Pendencias, contagens e afirmaco
 - Cifra do payload: envelope AES-GCM; chave local ou KMS com cache de chave de dados
 - DoD de idempotencia medido por metricas/contadores; observabilidade por Actuator (scrape), sem stack local
 - Terraform, EC2, ALB/WAF, k6 completo e dashboards: depois
+
+## Incremento evolucao de SRE - 23/10/2026
+- [x] Workspace Detection (brownfield, artefatos SRE existentes)
+- [x] Requirements Analysis aprovada (`inception/sre-evolucao/requirements.md`)
+- [x] Workflow Planning aprovado (`inception/sre-evolucao/workflow-plan.md`)
+- User Stories: SKIPPED
+- Escopo: S0-S6; S7 fora
+- Restricao do usuario (23/10/2026): "não vamos levar nada para AWS agora, vamos fazer tudo local" — Q5 passa a C (processos locais); EC2 nao sera ligada
+- [x] Unidade S0 aprovada (`construction/sre-s0/validation.md`)
+- [x] S1 SLOs formais aprovada (`construction/sre-s1/summary.md`)
+- [x] S2 Medicao continua aprovada (`construction/sre-s2/validation.md`)
+- [x] S3 Alertas por burn rate aprovada (`construction/sre-s3/validation.md`)
+- [x] S4 Resposta a incidentes aprovada (`construction/sre-s4/validation.md`)
+- Pausa de 23/10 encerrada; S5 e S6 autorizadas ("pode seguir S4, S5, S6")
+- [x] S5 Durabilidade validada (`construction/sre-s5/validation.md`): build completo com 473 testes e reinicio real do worker, sem nova averbacao para replays terminais.
+- [ ] S6 Capacidade — ensaios e relatorio entregues (`construction/sre-s6/validation.md`, `docs/sre/capacidade-local.md`); DoD de homologacao nao atingido. A 1 req/s, servidor p95 ~89 ms e p99 ~245 ms: criterio de p99 <= 200 ms reprovado. Proximo passo: isolar custo do aceite/host e corrigir pacing do gerador antes de repetir qualificacao. Processos locais encerrados; AWS nao acessada.
+- [x] Organizacao dos logs: sete logs de build movidos de `applications/` para `logs/`; `.gitignore` cobre `/logs/`, `*.log` e `*.log.*`. Nenhum log rastreado pelo Git; referencia do build atualizada.
+- **Retomada**: continuar a investigacao de desempenho e a homologacao da S6. S0-S5 nao precisam ser reiniciadas; S7 segue fora do escopo. Nenhum ambiente em execucao.

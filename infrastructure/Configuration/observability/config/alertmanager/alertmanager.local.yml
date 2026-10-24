@@ -1,0 +1,37 @@
+# Alertmanager local (processo na maquina, sem AWS): substitui o SNS pela ponte webhook do
+# local-env, que publica na fila sqs-alerts (ElasticMQ). O consumidor grava os incidentes em
+# applications/.local/incidents/incidents.jsonl. Sem orquestrador nem Function URL.
+#
+#   alertmanager.exe --config.file=alertmanager.local.yml --storage.path=<dir> \
+#     --web.listen-address=127.0.0.1:9093 --cluster.listen-address=
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: blackhole
+  group_by: [alertname, env, service, job]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+  routes:
+    - receiver: incident-bridge
+      matchers: ['notification="sre"']
+
+receivers:
+  - name: incident-bridge
+    webhook_configs:
+      - url: http://127.0.0.1:9096/alerts
+        send_resolved: true
+  - name: blackhole
+
+inhibit_rules:
+  - source_matchers: ['alertname=~"Consignado.+BurnFast"']
+    target_matchers: ['alertname=~"Consignado.+BurnSlow"']
+    equal: [slo, lane]
+  - source_matchers: ['alertname="ConsignadoLegacyUnavailable"']
+    target_matchers: ['alertname=~"ConsignadoWorkerStalled|ConsignadoBacklogDelayed"']
+    equal: [env, service, instance]
+  - source_matchers: ['alertname="ConsignadoWorkerStalled"']
+    target_matchers: ['alertname="ConsignadoBacklogDelayed"']
+    equal: [env, service, instance]

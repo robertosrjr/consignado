@@ -1,5 +1,7 @@
 # Fechamento da PoC de SRE e observabilidade
 
+**Registro histórico de 18/10/2026.** Este fechamento se refere ao primeiro ciclo. O incremento posterior S0–S6 está no [estado atual](../estado-atual.md); o fechamento não significa homologação da capacidade nem conclusão da S6.
+
 **Data do fechamento:** 18/10/2026  
 **Resultado:** concluída, com os objetivos centrais atingidos e limitações conhecidas  
 **Escopo:** SRE e observabilidade da PoC de crédito consignado

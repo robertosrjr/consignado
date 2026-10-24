@@ -25,6 +25,7 @@ public final class LocalSqs implements AutoCloseable {
   public static final String FAST_QUEUE = "sqs-fast-lane-queue";
   public static final String STANDARD_QUEUE = "sqs-standard-lane-queue";
   public static final String DLQ = "sqs-dlq";
+  public static final String ALERT_QUEUE = "sqs-alerts";
 
   /** URLs das filas criadas. */
   public record QueueUrls(String fast, String standard, String dlq) {}
@@ -66,6 +67,20 @@ public final class LocalSqs implements AutoCloseable {
             StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")))
         .httpClient(UrlConnectionHttpClient.create())
         .build();
+  }
+
+  /**
+   * Fila de alertas, equivalente local da SQS assinada no topico SNS de producao. Visibilidade
+   * curta: uma falha do destino reentrega rapido.
+   */
+  public String createAlertQueue(SqsClient client) {
+    return client
+        .createQueue(
+            CreateQueueRequest.builder()
+                .queueName(ALERT_QUEUE)
+                .attributes(Map.of(QueueAttributeName.VISIBILITY_TIMEOUT, "10"))
+                .build())
+        .queueUrl();
   }
 
   /** Cria a DLQ e as filas das lanes com redrive (maxReceiveCount = 3). */

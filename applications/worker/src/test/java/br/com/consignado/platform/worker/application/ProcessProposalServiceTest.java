@@ -10,6 +10,7 @@ import br.com.consignado.platform.shared.contract.Lane;
 import br.com.consignado.platform.worker.application.WorkerFixtures.FixedClock;
 import br.com.consignado.platform.worker.application.WorkerFixtures.ScriptedLegacy;
 import br.com.consignado.platform.worker.application.port.in.ProcessingOutcome;
+import br.com.consignado.platform.worker.application.port.out.BusinessObserver;
 import br.com.consignado.platform.worker.application.port.out.ProposalSeed;
 import br.com.consignado.platform.worker.application.usecase.ProcessProposalService;
 import br.com.consignado.platform.worker.domain.LegacyResult;
@@ -18,6 +19,8 @@ import br.com.consignado.platform.worker.domain.ProposalEvent;
 import br.com.consignado.platform.worker.domain.ProposalStatus;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.inbox.InMemoryInboxReadAdapter;
 import br.com.consignado.platform.worker.infrastructure.adapter.out.persistence.InMemoryProposalRepository;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +35,66 @@ class ProcessProposalServiceTest {
 
   private List<String> eventTypes() {
     return repository.history(KEY).stream().map(ProposalEvent::type).toList();
+  }
+
+  private record Decision(boolean confirmed, Instant at) {}
+
+  private final List<Decision> decisions = new ArrayList<>();
+  private final ProcessProposalService recording =
+      new ProcessProposalService(
+          repository,
+          inbox,
+          legacy,
+          clock,
+          BusinessObserver.NONE,
+          (key, confirmed, at) -> decisions.add(new Decision(confirmed, at)));
+
+  @Test
+  void should_record_the_decision_for_the_slo_once_per_final_state() {
+    inbox.put(inboxRecord(KEY));
+    legacy.script.add(new LegacyResult.TransientFailure());
+    legacy.script.add(new LegacyResult.Rejected("margem insuficiente"));
+
+    recording.process(message());
+    assertThat(decisions).isEmpty();
+
+    recording.process(message());
+    recording.process(message());
+    assertThat(decisions)
+        .containsExactly(new Decision(false, clock.now()), new Decision(false, clock.now()));
+  }
+
+  @Test
+  void should_repair_the_inbox_decision_after_a_crash_without_calling_legacy_again() {
+    inbox.put(inboxRecord(KEY));
+    service.process(message()); // terminal persistido, recorder indisponivel/ausente
+    Instant decidedAt = repository.find(KEY).orElseThrow().updatedAt();
+
+    assertThat(recording.process(message())).isEqualTo(ProcessingOutcome.COMPLETED);
+
+    assertThat(decisions).containsExactly(new Decision(true, decidedAt));
+    assertThat(legacy.calls).hasSize(1);
+  }
+
+  @Test
+  void should_retry_a_failed_decision_write_after_persisting_the_terminal() {
+    inbox.put(inboxRecord(KEY));
+    var unavailable =
+        new ProcessProposalService(
+            repository,
+            inbox,
+            legacy,
+            clock,
+            BusinessObserver.NONE,
+            (key, confirmed, at) -> {
+              throw new IllegalStateException("Inbox indisponivel");
+            });
+    assertThatThrownBy(() -> unavailable.process(message()))
+        .isInstanceOf(IllegalStateException.class);
+    assertThat(repository.find(KEY).orElseThrow().status()).isEqualTo(ProposalStatus.CONFIRMED);
+    assertThat(recording.process(message())).isEqualTo(ProcessingOutcome.COMPLETED);
+    assertThat(decisions).hasSize(1);
+    assertThat(legacy.calls).hasSize(1);
   }
 
   @Test

@@ -4,7 +4,7 @@ Data: 16/10/2026. Inspeção estática; não foram executados testes nem alterad
 
 Skill aplicada: `.claude/skills/idempotency-pattern-skill/idempotency-pattern-skill.md` e sua referência técnica.
 
-Evolução posterior: a implementação opt-in de Business Fingerprint v2 está descrita em [business-fingerprint-v2-implementacao.md](business-fingerprint-v2-implementacao.md). Ela acrescenta comparação de conteúdo e escopo por parceiro na nova camada de aceitação. Os achados abaixo registram o caminho anterior, que permanece como padrão enquanto a flag está desligada; os pontos sobre persistência e concorrência do worker continuam pendentes.
+Evolução posterior: a implementação opt-in de Business Fingerprint v2 está descrita em [business-fingerprint-v2-implementacao.md](business-fingerprint-v2-implementacao.md). Ela acrescenta comparação de conteúdo e escopo por parceiro na nova camada de aceitação. Os achados abaixo registram o caminho anterior, que permanece como padrão enquanto a flag está desligada; a S5 posterior acrescentou persistência transacional do worker e teste de reinício. Os achados desta tabela são históricos; limites de concorrência, métricas e dependência da idempotência do legado devem ser lidos junto à [validação S5](../aidlc-docs/construction/sre-s5/validation.md).
 
 ## Escopo e diagnóstico
 

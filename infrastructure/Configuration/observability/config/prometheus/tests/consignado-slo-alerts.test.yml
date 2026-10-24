@@ -1,0 +1,147 @@
+rule_files:
+  - ../rules/consignado-slo.yml
+  - ../rules/consignado-slo-alerts.yml
+
+evaluation_interval: 30s
+
+tests:
+  - name: J1 queima rapida pagina e depois abre ticket
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}'
+        values: '0+100x40'
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="500"}'
+        values: '0+10x40'
+    promql_expr_test:
+      - expr: count(ALERTS{alertname="ConsignadoJ1AvailabilityBurnFast",alertstate="firing"}) or vector(0)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: count(ALERTS{alertname="ConsignadoJ1AvailabilityBurnSlow",alertstate="firing"}) or vector(0)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+      - expr: count(ALERTS{alertname="ConsignadoJ1AvailabilityBurnSlow",alertstate="firing"}) or vector(0)
+        eval_time: 30m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+
+  - name: J1 erro dentro do budget nao alerta
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}'
+        values: '0+100x40'
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="500"}'
+        values: '0+1x40'
+    promql_expr_test:
+      - expr: count(ALERTS{alertstate="firing",slo="j1-availability"}) or vector(0)
+        eval_time: 30m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+
+  - name: J1 pico encerrado resolve pela janela curta
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}'
+        values: '0+100x40'
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="500"}'
+        values: '0+20x10 200+0x30'
+    promql_expr_test:
+      - expr: count(ALERTS{alertname="ConsignadoJ1AvailabilityBurnFast",alertstate="firing"}) or vector(0)
+        eval_time: 8m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: count(ALERTS{alertname="ConsignadoJ1AvailabilityBurnFast",alertstate="firing"}) or vector(0)
+        eval_time: 25m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+
+  - name: J1 latencia acima de 100 ms pagina
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}'
+        values: '0+100x40'
+      - series: 'http_server_requests_seconds_bucket{service="ingestion-api",method="POST",uri="/v1/proposals",status="202",le="0.1"}'
+        values: '0+20x40'
+    promql_expr_test:
+      - expr: count(ALERTS{alertname="ConsignadoJ1LatencyBurnFast",alertstate="firing"}) or vector(0)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+
+  - name: J2 pagina por lane; standard so abre ticket
+    interval: 1m
+    input_series:
+      - series: 'slo_j2_events_total{lane="fast",outcome="good"}'
+        values: '0+2x40'
+      - series: 'slo_j2_events_total{lane="fast",outcome="bad"}'
+        values: '0+8x40'
+      - series: 'slo_j2_events_total{lane="standard",outcome="good"}'
+        values: '0+3x40'
+      - series: 'slo_j2_events_total{lane="standard",outcome="bad"}'
+        values: '0+7x40'
+    promql_expr_test:
+      - expr: count by (lane) (ALERTS{alertname="ConsignadoJ2DeadlineBurnFast",alertstate="firing"})
+        eval_time: 10m
+        exp_samples:
+          - labels: '{lane="fast"}'
+            value: 1
+      - expr: count by (lane) (ALERTS{alertname="ConsignadoJ2DeadlineBurnSlow",alertstate="firing"})
+        eval_time: 30m
+        exp_samples:
+          - labels: '{lane="fast"}'
+            value: 1
+          - labels: '{lane="standard"}'
+            value: 1
+
+  - name: DLQ com mensagem dispara
+    interval: 1m
+    input_series:
+      - series: 'worker_dlq_depth{env="local",service="worker",instance="t"}'
+        values: '0 0 2+0x10'
+    promql_expr_test:
+      - expr: count(ALERTS{alertname="ConsignadoDlqNotEmpty",alertstate="firing"}) or vector(0)
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 0
+      - expr: count(ALERTS{alertname="ConsignadoDlqNotEmpty",alertstate="firing"}) or vector(0)
+        eval_time: 5m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+
+  - name: Avaliador parado com worker ativo dispara
+    interval: 1m
+    input_series:
+      - series: 'slo_j2_last_evaluation_seconds{env="local",service="worker",instance="t"}'
+        values: '0+0x20'
+      - series: 'push_time_seconds{job="worker",instance="t"}'
+        values: '0+60x20'
+    promql_expr_test:
+      - expr: count(ALERTS{alertname="ConsignadoSloEvaluatorStale",alertstate="firing"}) or vector(0)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+
+  - name: Avaliador em dia nao dispara
+    interval: 1m
+    input_series:
+      - series: 'slo_j2_last_evaluation_seconds{env="local",service="worker",instance="t"}'
+        values: '0+60x20'
+      - series: 'push_time_seconds{job="worker",instance="t"}'
+        values: '0+60x20'
+    promql_expr_test:
+      - expr: count(ALERTS{alertname="ConsignadoSloEvaluatorStale",alertstate="firing"}) or vector(0)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 0

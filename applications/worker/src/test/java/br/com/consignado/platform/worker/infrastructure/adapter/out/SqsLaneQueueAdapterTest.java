@@ -172,7 +172,7 @@ class SqsLaneQueueAdapterTest {
   private SqsLaneQueueAdapter adapter;
 
   private SqsLaneQueueAdapter adapter() {
-    adapter = new SqsLaneQueueAdapter(sqs, FAST_URL, STANDARD_URL, 20, 1, 30);
+    adapter = new SqsLaneQueueAdapter(sqs, FAST_URL, STANDARD_URL, null, 20, 1, 30);
     adapter.start();
     return adapter;
   }
@@ -297,7 +297,7 @@ class SqsLaneQueueAdapterTest {
 
   @Test
   void should_reject_a_prefetch_smaller_than_one_batch() {
-    assertThatThrownBy(() -> new SqsLaneQueueAdapter(sqs, FAST_URL, STANDARD_URL, 5, 1, 30))
+    assertThatThrownBy(() -> new SqsLaneQueueAdapter(sqs, FAST_URL, STANDARD_URL, null, 5, 1, 30))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }

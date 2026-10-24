@@ -1,64 +1,43 @@
-# Contexto de negócio e objetivos da PoC
+# Contexto e objetivos da PoC
 
-Conteúdo transferido do README principal em 16/10/2026. Os cenários e números abaixo registram a motivação e as metas do experimento; não são resultados de produção. Dados de mercado e referências regulatórias exigem fontes e data de consulta antes de publicação.
+Revisão: 23/10/2026. Este documento explica o problema e as metas. Os resultados comprovados estão no [estado atual](../estado-atual.md).
 
-## Por que existe: o paradoxo da virada de folha
+## O problema
 
-O crédito consignado é a linha de crédito pessoal de menor risco e maior rentabilidade do mercado brasileiro. A carteira combinada passa de **R$ 484 bilhões**: mais de R$ 384 bilhões em INSS e setor público, e mais de R$ 100 bilhões no consignado privado, via eSocial e FGTS Digital. A disputa entre bancos tradicionais e plataformas digitais se decide em milissegundos.
+A plataforma recebe propostas de crédito consignado de parceiros e as encaminha a um legado de capacidade limitada. O cenário de teste simula um pico de entrada, como uma virada de folha, com requisições repetidas e momentos de indisponibilidade do destino.
 
-A cada **virada de folha** — quando o INSS, o eSocial ou os governos estaduais liberam a margem consignável — bilhões em margem ficam disponíveis de uma só vez, às 00:01. É a maior janela de originação do mês.
+Encaminhar todo o pico diretamente ao legado aumenta a disputa por conexões e o risco de timeouts. As retentativas acrescentam carga e podem repetir efeitos se o destino não reconhecer a mesma operação.
 
-E aqui está o paradoxo: **o evento mais lucrativo do mês é também o de maior risco operacional.**
+## A proposta
 
-### Quem age no minuto zero
+Separar aceite e processamento: a API registra a proposta na Inbox antes de responder `202`; o dispatcher escolhe uma fila; o worker controla o ritmo de envio ao legado. O `202` confirma o aceite, não a averbação.
 
-| Ator | Comportamento |
+| Capacidade | Objetivo |
 |---|---|
-| **Cliente final** (aposentado, trabalhador CLT) | simula o empréstimo na véspera e não tolera falha; se o sistema travar, o correspondente leva a proposta para o concorrente |
-| **Correspondente bancário e fintechs parceiras** | não operam manualmente: usam robôs que disparam a **mesma proposta centenas de vezes por segundo**, no milissegundo em que a janela abre, para garantir a margem antes dos rivais |
+| Ingestão | Meta de 10.000 requisições/s, com p95 abaixo de 100 ms; ainda sem homologação |
+| Idempotência | Reconhecer reenvios da mesma chave e evitar novo efeito no destino, respeitando os limites de persistência e do contrato do legado |
+| Controle de vazão | Limitar envios sob o teto nominal de 180 TPS do legado simulado |
+| Prioridade | Pisos de 70% fast e 30% standard sob contenção, com empréstimo quando uma fila está ociosa |
+| Recuperação | Retomar processamento após falhas sem perder a identidade da proposta |
+| Observabilidade | Distinguir aceite, espera, decisão e falta de evidência |
 
-O resultado é um salto de **50 requisições por segundo para 10.000**, de forma instantânea, contra um Core Banking projetado para **180**.
+A pontuação atual considera portabilidade, parceiro VIP e valor. Seguro acoplado, Spread, CET e saldo devedor de portabilidade não fazem parte do contrato implementado.
 
-### O que acontece hoje, com arquitetura síncrona
+## Como avaliar
 
-- O pool de conexões do banco de dados se esgota em **menos de 3 segundos**.
-- O sistema entra em timeout em cascata e cai, ficando fora do ar de **40 a 60 minutos**.
-- A liderança de TI é convocada de madrugada para reiniciar servidores e limpar filas.
-- Nesse intervalo, concorrentes resilientes absorvem a demanda. A perda de originação é irrecuperável, porque a margem do cliente já foi tomada.
-- No caos dos retries dos robôs, requisições duplicadas criam condições de corrida e geram **averbação duplicada** no INSS ou no eSocial — litígio judicial e exposição às sanções da Autorregulação do Consignado (Febraban e ABBC), que já acumula mais de **2.260 medidas administrativas**.
+A PoC precisa conciliar propostas aceitas e decisões da mesma coorte, distinguir replays de novos efeitos e mostrar o comportamento durante falhas. Contadores e painéis ajudam na investigação, mas não substituem a conciliação dos registros.
 
-Ineficiência na portabilidade agrava o quadro: com o Open Finance e a Resolução Conjunta CMN/BCB nº 15/2025, a demora do banco facilita a migração do próprio cliente para a concorrência.
+Um replay reconhecido pelo mock legado é esperado em certas retentativas e não comprova averbação duplicada. O critério de integridade é ausência de segundo efeito para a mesma operação.
 
-## Objetivo
+A S6 ainda não homologou capacidade sustentada: o último ensaio local reprovou o limite de p99 de 200 ms. O teto configurado de 180 TPS não é uma medição da vazão real de todo o sistema.
 
-Provar, com código funcionando e métricas, que **não é preciso reescrever o Core Banking** para sobreviver à virada. A alternativa — expandir o legado para 10.000 TPS síncronos — custaria dezenas de milhões e anos de risco.
+## Escopo
 
-A PoC precisa demonstrar quatro coisas:
+O foco é a plataforma de ingestão e processamento. Contratação, gestão de identidade do cliente, MFA e aprovação transacional não entram nesta PoC. O Core Banking é um mock; os resultados locais não comprovam conformidade regulatória ou comportamento de um banco real.
 
-| Pilar | O que precisa ficar provado |
-|---|---|
-| **Absorção imediata** | a borda sustenta 10.000 req/s e responde `HTTP 202` com p95 abaixo de 100 ms, acalmando os robôs com um protocolo oficial |
-| **Idempotência radical** | 500 disparos da mesma proposta no mesmo segundo gravam **um** registro e descartam os outros 499, sem custo e sem risco de averbação dupla |
-| **Proteção física do legado** | o Core Banking recebe um fluxo estável travado em 180 TPS, trabalhando com eficiência e sem sobressalto |
-| **Garantia de margem por QoS** | a capacidade escassa vai primeiro às operações mais rentáveis: alto valor, seguros acoplados e portabilidade |
+## Leituras
 
-### Ganhos que justificam o investimento
-
-Disponibilidade no momento crítico protege e expande participação de mercado. A priorização 70/30 maximiza o VGV nos primeiros minutos, quando a margem mais valiosa está disponível. A idempotência na borda elimina o risco de duplicidade e atende Febraban, MTE e Banco Central. E o descarte das duplicatas na borda corta processamento inútil na nuvem, encerrando também os acionamentos de emergência de madrugada.
-
-## Como a PoC é homologada
-
-O teste de carga precisa evidenciar, ao vivo:
-
-- **Absorção na borda**: 10.000 TPS sustentados, mais de 99,9% de `202`, p95 abaixo de 100 ms.
-- **Linha de proteção do legado**: vazão desenhando uma reta travada em 180 TPS. No legado simulado, `legacy_peak_window` deve ficar em 180 ou abaixo, e nenhum `503` por capacidade deve aparecer.
-- **Integridade da idempotência**: injeção de requisições concorrentes com chaves duplicadas produzindo exatamente um registro por chave. `legacy_averbacoes_total{kind="duplicate"}` deve ser zero.
-- **Effective drain time**: o tempo estimado para esvaziar o backlog acumulado após o pico, em tempo real.
-
-Avaliação das métricas de negócio e de aplicação, com as consultas prontas: [docs/brainstorming/](../brainstorming/).
-
-## Leituras relacionadas
-
-- [Narrativas de origem](./).
-- [Visão técnica](../manuais/visao-tecnica.md).
-- [Estado atual e limitações](../estado-atual.md).
+- [Visão técnica](../manuais/visao-tecnica.md)
+- [Jornada da proposta](../jornadas/jornada-da-proposta.md)
+- [SLOs e limites da medição](../sre/slo.md)
+- [Resultados de capacidade](../sre/capacidade-local.md)

@@ -47,6 +47,9 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+      # Limites exatos do SLO-J1-L (docs/sre/slo.md)
+      slo:
+        http.server.requests: 100ms,200ms
 
 springdoc:
   # SECURITY-09, falha fechada: documentacao desligada por padrao. O ambiente local liga com

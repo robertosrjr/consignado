@@ -53,9 +53,10 @@ receivers:
 
 # Não notifica alertas warning se já houver um critical para o mesmo alvo.
 inhibit_rules:
-  - source_matchers: ['alertname="ConsignadoIngestionErrors"']
-    target_matchers: ['alertname="ConsignadoIngestionLatency"']
-    equal: [env, service, instance]
+  # Burn rate: a pagina (rapida) suprime o ticket (lento) do mesmo SLO e lane.
+  - source_matchers: ['alertname=~"Consignado.+BurnFast"']
+    target_matchers: ['alertname=~"Consignado.+BurnSlow"']
+    equal: [slo, lane]
   - source_matchers: ['alertname="ConsignadoLegacyUnavailable"']
     target_matchers: ['alertname=~"ConsignadoWorkerStalled|ConsignadoBacklogDelayed"']
     equal: [env, service, instance]

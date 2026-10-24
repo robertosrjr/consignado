@@ -4,7 +4,7 @@ import br.com.consignado.platform.shared.contract.Lane;
 import br.com.consignado.platform.worker.application.port.in.ProcessingOutcome;
 import br.com.consignado.platform.worker.application.port.out.DispatchObserver;
 import br.com.consignado.platform.worker.domain.ProposalStatus;
-import br.com.consignado.platform.worker.infrastructure.adapter.out.persistence.InMemoryProposalRepository;
+import br.com.consignado.platform.worker.infrastructure.adapter.out.persistence.ProposalStatusCounts;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -23,7 +23,7 @@ public final class WorkerMetrics implements DispatchObserver {
 
   public WorkerMetrics(
       MeterRegistry registry,
-      InMemoryProposalRepository repository,
+      ProposalStatusCounts repository,
       BacklogEstimator estimator,
       CircuitBreaker breaker) {
     this.registry = registry;

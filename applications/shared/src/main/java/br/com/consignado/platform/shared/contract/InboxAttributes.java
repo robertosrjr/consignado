@@ -23,6 +23,33 @@ public final class InboxAttributes {
   public static final String CREATED_AT = "createdAt";
   public static final String TTL = "ttl";
 
+  /**
+   * Medicao do SLO J2. {@code sloOpen} (lane) existe apenas enquanto a proposta roteada nao foi
+   * avaliada contra o prazo; e a chave do indice esparso {@link #SLO_OPEN_INDEX} (com {@code
+   * createdAt}). O Worker grava {@code decision}/{@code decidedAt}; o avaliador remove {@code
+   * sloOpen} e grava {@code sloOutcome}.
+   */
+  public static final String SLO_OPEN = "sloOpen";
+
+  public static final String SLO_OPEN_INDEX = "sloOpen-createdAt";
+  public static final String SLO_OUTCOME = "sloOutcome";
+  public static final String DECISION = "decision";
+  public static final String DECIDED_AT = "decidedAt";
+
+  public static final String DECISION_CONFIRMED = "confirmed";
+  public static final String DECISION_BUSINESS_REJECTED = "business_rejected";
+
+  /**
+   * Marca esparsa de "aceito e ainda nao despachado" (valor {@link #DISPATCH_PENDING_VALUE}),
+   * gravada pela Ingestion API e removida pelo Dispatcher. Com {@code createdAt}, forma o indice
+   * {@link #DISPATCH_PENDING_INDEX} usado pelo Sweeper para recuperar itens orfaos (Stream perdido
+   * ou SQS indisponivel no despacho).
+   */
+  public static final String DISPATCH_PENDING = "dispatchPending";
+
+  public static final String DISPATCH_PENDING_VALUE = "pending";
+  public static final String DISPATCH_PENDING_INDEX = "dispatchPending-createdAt";
+
   public static final String STATUS_RECEIVED = "RECEIVED";
   public static final String STATUS_DISPATCHED = "DISPATCHED";
   public static final String STATUS_FAILED = "FAILED";

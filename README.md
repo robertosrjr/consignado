@@ -1,16 +1,18 @@
-﻿# Platform Engine — PoC de Crédito Consignado
+# Platform Engine — PoC de Crédito Consignado
+
+Estado em 23/10/2026: **S0–S5 validadas; S6 pendente por latência p99**. Trabalho local, sem AWS. MFA e aprovação transacional ficam fora do escopo. Veja o [estado atual](docs/estado-atual.md).
 
 ![Java](https://img.shields.io/badge/Java-25_LTS-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
 ![Status](https://img.shields.io/badge/status-PoC_em_desenvolvimento-yellow)
-![SRE](https://img.shields.io/badge/SRE_PoC-concluida-2ea44f)
+![SRE](https://img.shields.io/badge/SRE-S6_em_validacao-yellow)
 ![Maven](https://img.shields.io/badge/Maven-3.9+-C71A36?logo=apachemaven&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-DynamoDB_|_SQS-FF9900?logo=amazonwebservices&logoColor=white)
 ![Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC?logo=terraform&logoColor=white)
 ![Micrometer](https://img.shields.io/badge/metricas-Micrometer-1f6feb)
 ![BIAN](https://img.shields.io/badge/BIAN-v14.0-0a4d8c)
 ![TOGAF](https://img.shields.io/badge/TOGAF-servicos_e_ofertas-5c2d91)
-![LGPD](https://img.shields.io/badge/LGPD-conformidade-009c3b)
+![Privacidade](https://img.shields.io/badge/privacidade-mascaramento_de_PII-009c3b)
 [![Deploy](https://github.com/robertosrjr/consignado/actions/workflows/deploy.yml/badge.svg)](https://github.com/robertosrjr/consignado/actions/workflows/deploy.yml)
 [![Governance](https://github.com/robertosrjr/consignado/actions/workflows/governance.yml/badge.svg)](https://github.com/robertosrjr/consignado/actions/workflows/governance.yml)
 ![Last commit](https://img.shields.io/github/last-commit/robertosrjr/consignado)
@@ -41,7 +43,7 @@ Para encerrar, execute `.\scripts\local-down.ps1` na pasta `applications`.
 
 | Assunto | Guia |
 |---|---|
-| Fechamento da PoC de SRE | [Conclusão, evidências, limites e backlog](docs/sre/fechamento-poc-sre-observabilidade.md) |
+| Fechamento do primeiro ciclo SRE (18/10) | [Conclusão, evidências, limites e backlog](docs/sre/fechamento-poc-sre-observabilidade.md) |
 | Contexto de negócio e metas | [Contexto e objetivos](docs/narrativas/contexto-e-objetivos.md) |
 | Alinhamento ao BIAN v14.0 | [Service Domains, cenário e lacunas](docs/narrativas/alinhamento-bian.md) |
 | Serviços de negócio e ofertas (TOGAF) | [Modelagem de serviços e ofertas](docs/narrativas/modelagem-servicos-e-ofertas.md) |
@@ -51,7 +53,7 @@ Para encerrar, execute `.\scripts\local-down.ps1` na pasta `applications`.
 | Jornada de um pedido | [Negócio](docs/jornadas/jornada-da-proposta.md) · [Fluxo técnico](docs/jornadas/jornada-entre-modulos.md) |
 | Integração HTTP | [Manual da API](docs/narrativas/manual-api-rest.md) |
 | Grafana e métricas de negócio | [Dashboards](applications/observability/grafana/dashboards/README.md) |
-| SRE, métricas, SLIs e SLOs | [Guia SRE e plano de implementação](docs/sre/README.md) |
+| SRE, métricas, SLIs e SLOs | [Guia SRE e plano atual](docs/sre/README.md) |
 | EC2, Docker e Terraform | [Infraestrutura](infrastructure/README.md) |
 | Alertas e notificações | [Alertmanager → SNS → SQS](infrastructure/Configuration/observability/ALERTAS.md) |
 | Evolução da idempotência | [Business Fingerprint v2](docs/business-fingerprint-v2-implementacao.md) |

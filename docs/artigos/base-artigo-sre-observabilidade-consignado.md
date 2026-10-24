@@ -1,6 +1,6 @@
 # Base factual para artigo: SRE, observabilidade e métricas na plataforma de consignado
 
-> **Nota de atualização — 18/10/2026:** este documento nasceu como fotografia de uma etapa anterior. Depois desse corte, a jornada local `ingestion-api → dispatcher → worker → mock-legacy` foi observada no Jaeger. Isso comprova o caminho local exercitado, mas não valida o runtime Lambda/AWS nem todos os caminhos de erro. Para o estado final da PoC, use também o [relatório de fechamento](sre/fechamento-poc-sre-observabilidade.md) e o [guia de tracing local](manuais/tracing-local.md).
+> **Nota de atualização — 18/10/2026:** este documento nasceu como fotografia de uma etapa anterior. Depois desse corte, a jornada local `ingestion-api → dispatcher → worker → mock-legacy` foi observada no Jaeger. Isso comprova o caminho local exercitado, mas não valida o runtime Lambda/AWS nem todos os caminhos de erro. Para o estado final da PoC, use também o [relatório de fechamento](../sre/fechamento-poc-sre-observabilidade.md) e o [guia de tracing local](../manuais/tracing-local.md).
 
 **Data de referência:** 16 de outubro de 2026, America/Sao_Paulo.  
 **Natureza:** documento de apoio técnico e editorial; não é o artigo final.  
@@ -944,6 +944,6 @@ Os links explicam conceitos e comportamentos das ferramentas. A evidência de qu
 
 As consultas originais deste documento registram evidências históricas. Depois delas, houve limpeza explícita de métricas, traces e filas para novos testes, seguida por desligamento da EC2. A lista de serviços no Jaeger e os valores dos painéis não representam estado atual permanente.
 
-O dashboard de negócio passou a exibir valores monetários completos com duas casas decimais. Confirmados são comparados a recebidos (quantidade, valor e ticket): menor fica laranja; igual ou maior, verde. A comparação arredonda na precisão exibida. A diferença pode refletir rejeições e janelas de recebimento/finalização distintas, e não equivale a backlog ou conciliação financeira. Configuração atual: [README dos dashboards](../applications/observability/grafana/dashboards/README.md).
+O dashboard de negócio passou a exibir valores monetários completos com duas casas decimais. Confirmados são comparados a recebidos (quantidade, valor e ticket): menor fica laranja; igual ou maior, verde. A comparação arredonda na precisão exibida. A diferença pode refletir rejeições e janelas de recebimento/finalização distintas, e não equivale a backlog ou conciliação financeira. Configuração atual: [README dos dashboards](../../applications/observability/grafana/dashboards/README.md).
 
-Business Fingerprint v2 foi acrescentado ao código como opt-in, com flag desligada e provisionamento AWS pendente; consultar [implementação](business-fingerprint-v2-implementacao.md). O tracing local de quatro serviços foi comprovado posteriormente; runtime Lambda/AWS e cobertura integral permanecem pendentes.
+Business Fingerprint v2 foi acrescentado ao código como opt-in, com flag desligada e provisionamento AWS pendente; consultar [implementação](../business-fingerprint-v2-implementacao.md). O tracing local de quatro serviços foi comprovado posteriormente; runtime Lambda/AWS e cobertura integral permanecem pendentes.

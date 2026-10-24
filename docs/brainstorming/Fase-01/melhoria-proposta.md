@@ -1,5 +1,7 @@
 # Melhoria proposta: fechar a garantia de "zero averbação dupla" e provar os números
 
+**Brainstorming histórico da fase 1.** Não é o plano ativo. Algumas propostas receberam entregas posteriores; consulte o [estado atual](../../estado-atual.md) antes de tratar um item como pendente.
+
 > **Status:** proposta, ainda não implementada
 > **Data:** 09/10/2026
 > **Escopo:** `ingestion-api`, `worker`, `mock-legacy`, `dispatcher-lambda`, testes de carga e documentação
@@ -9,7 +11,7 @@
 
 ## 0. Decisão final da revisão (09/10/2026)
 
-Esta seção registra o resultado da revisão adversarial feita em três rodadas com o notebook de preparação, sobre a PoC **e** sobre o [pattern](../patterns/pattern-borda-de-absorcao.md). As decisões abaixo prevalecem sobre qualquer sugestão anterior.
+Esta seção registra o resultado da revisão adversarial feita em três rodadas com o notebook de preparação, sobre a PoC **e** sobre o [pattern](../../patterns/pattern-borda-de-absorcao.md). As decisões abaixo prevalecem sobre qualquer sugestão anterior.
 
 ### Aceito
 

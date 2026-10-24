@@ -26,7 +26,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * reiniciar o processo; o DDL de referencia do SDD (proposal, proposal_event) fica para a fase com
  * banco relacional, trocando apenas este adaptador.
  */
-public final class InMemoryProposalRepository implements ProposalRepositoryPort {
+public final class InMemoryProposalRepository
+    implements ProposalRepositoryPort, ProposalStatusCounts {
 
   private final ClockPort clock;
   private final Map<IdempotencyKey, Instant> terminalCommittedAt = new ConcurrentHashMap<>();
@@ -97,6 +98,7 @@ public final class InMemoryProposalRepository implements ProposalRepositoryPort 
   }
 
   /** Quantidade de propostas no estado informado (base da metrica {@code worker.proposals}). */
+  @Override
   public long count(ProposalStatus status) {
     return countByStatus.get(status).get();
   }

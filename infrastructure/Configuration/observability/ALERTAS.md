@@ -1,18 +1,29 @@
 # Alertas SRE da PoC Consignado
 
-Regras: `config/prometheus/rules/consignado-sre.yml`. Os limites iniciais sao hipoteses a
-calibrar com carga e SLOs acordados, nao metas contratuais. Nenhuma regra nova possui
+Rotas e evidências: o primeiro ciclo usou SNS → SQS na AWS; a S4 implementou uma rota local por webhook → ElasticMQ → consumidor JSONL. Os ensaios de capacidade usam scrape direto. Regras dependentes de `push_time_seconds`, inclusive frescor do avaliador, precisam de adaptação para esse modo; não assumir cobertura equivalente. Consulte o [guia de alertas](../../../docs/sre/alertas/README.md).
+
+Regras: `config/prometheus/rules/consignado-sre.yml` (sintomas e causas) e
+`consignado-slo-alerts.yml` (burn rate do [SLO v1](../../../docs/sre/slo.md), desde 23/10/2026).
+Limites e metas sao internos, nao contratuais. Nenhuma regra nova possui
 `action=trigger_agentic_loop`: nao aciona o orquestrador de self-healing existente.
 
 | Alerta | Condicao | Persistencia | Nivel |
 |---|---|---|---|
 | ConsignadoScrapeDown | alvo da stack com up=0 | 2 min | critical |
 | ConsignadoPushMissing | ultimo push >120 s ou um dos tres jobs esperados ausente | 1 min | critical |
-| ConsignadoIngestionErrors | 5xx >5%, com >=100 POSTs na janela de 5 min | 5 min | critical |
-| ConsignadoIngestionLatency | p95 >500 ms, com >=100 POSTs na janela de 5 min | 10 min | warning |
 | ConsignadoWorkerStalled | profundidade >0 e processamento=0 | 5 min | critical |
 | ConsignadoBacklogDelayed | estimativa de drenagem >300 s, com fila >0 | 10 min | warning |
-| ConsignadoLegacyUnavailable | circuit breaker=2 (aberto), com fila >0 | 2 min | critical |
+| ConsignadoLegacyUnavailable | circuit breaker fora de CLOSED (>0) com ao menos um OPEN (2) na janela de 2 min, com fila >0 | 2 min | critical |
+| ConsignadoJ1AvailabilityBurnFast / Slow | 5xx > 14,4x budget em 5m e 1h / > 6x em 30m e 6h (budget 0,5%) | 2 min / 15 min | critical / warning |
+| ConsignadoJ1LatencyBurnFast / Slow | aceites > 100 ms acima de 14,4x / 6x o budget de 5% | 2 min / 15 min | critical / warning |
+| ConsignadoJ2DeadlineBurnFast / Slow | fora do prazo acima de 14,4x / 6x o budget da lane | 2 min / 15 min | critical / warning |
+| ConsignadoDlqNotEmpty | `worker_dlq_depth` > 0 | 1 min | critical |
+| ConsignadoSloEvaluatorStale | ultimo ciclo do avaliador J2 > 120 s, com worker enviando metricas | 2 min | warning |
+
+`ConsignadoIngestionErrors` (5xx > 5%) e `ConsignadoIngestionLatency` (p95 > 500 ms) foram
+removidos na S3: o burn rate de J1 cobre os mesmos sintomas contra a meta do SLO. Na lane
+standard (budget 10%) a pagina rapida e matematicamente impossivel (14,4 x 10% > 100%);
+falhas graves nessa lane aparecem pelo ticket lento, por DLQ, WorkerStalled e LegacyUnavailable.
 
 Os filtros HTTP sao `service="ingestion-api",method="POST",uri="/v1/proposals"`.
 4xx, inclusive cotas 429, nao contam como falta de disponibilidade nesta primeira versao.
@@ -161,11 +172,12 @@ nenhum teste de e-mail foi enviado enquanto destino/SMTP nao estiverem configura
 Testes fora da pasta rules, para nao serem carregados pelo wildcard de producao:
 
 ```sh
-promtool check rules config/prometheus/rules/consignado-sre.yml
-promtool test rules config/prometheus/tests/consignado-sre.test.yml
+promtool check rules config/prometheus/rules/*.yml
+promtool test rules config/prometheus/tests/*.yml
+amtool check-config config/alertmanager/alertmanager.yml
 ```
 
-14 cenarios / 98 verificacoes: disparos, transientes, pouco trafego, ausencia de push,
+Cenarios de sintoma: disparos, transientes, pouco trafego, ausencia de push,
 snapshots congelados, fila vazia, circuit breaker meio-aberto e persistencia. Nao param
 servicos nem disparam notificacoes reais. Publicar apenas a regra, validar a configuracao
 completa com promtool, fazer POST /-/reload e consultar /api/v1/rules e /api/v1/alerts.
@@ -187,20 +199,6 @@ em parada local planejada, silenciar por service e instance com expiracao. Evita
 todos os alertas da stack. A espera total para push antigo e aproximadamente 3 min, mais
 intervalo de avaliacao e agrupamento da notificacao.
 
-## ConsignadoIngestionErrors
-
-Conferir logs inbox_unavailable e tipo da excecao, recursos da maquina, DynamoDB e traces.
-Na PoC houve ApiCallTimeoutException/ApiCallAttemptTimeoutException no DynamoDB Local.
-503/timeouts podem ocorrer depois da gravacao: repetir a mesma Idempotency-Key. Comparar
-contadores de entrada e resultados finais como etapas diferentes, sem exigir igualdade
-imediata nem tratar rejeicao de negocio como falha tecnica.
-
-## ConsignadoIngestionLatency
-
-Conferir aquecimento/JIT, pool HTTP e latencia do banco; separar gerador de carga dos servicos.
-Nao aumentar timeout global para esconder saturacao. O alerta mede p95 de POSTs agregados,
-nao o limite por requisicao do JMeter. Fumaca com dez propostas nao atinge o volume minimo.
-
 ## ConsignadoWorkerStalled
 
 Verificar fila/SQS, consumidores, permissoes, disponibilidade do legado e circuit breaker.
@@ -217,14 +215,44 @@ cada instancia: nao somar replicas para estimar backlog global sem revisar o mod
 
 ## ConsignadoLegacyUnavailable
 
-Estado 2 significa aberto; 1 significa meio-aberto. Conferir legado, limites de capacidade,
+Estado 2 significa aberto; 1 significa meio-aberto. Desde 23/10/2026 o alerta cobre a alternancia
+OPEN/HALF_OPEN (lacuna reproduzida no L3): basta o circuito nao voltar a CLOSED por 2 min com
+ao menos um OPEN na janela. HALF_OPEN continuo, sem OPEN, segue sem pagina. Conferir legado, limites de capacidade,
 latencia e respostas de falha. Manter protecao de capacidade e idempotencia ao recuperar.
+
+## ConsignadoJ1AvailabilityBurn
+
+Consumo acelerado do budget de 0,5% de 5xx no POST /v1/proposals. Fast: resposta imediata;
+Slow: ticket. Conferir DynamoDB, `inbox_unavailable` e timeouts no trace. Repeticoes devem
+preservar Idempotency-Key. Pelo budget restante, aplicar a politica de `docs/sre/slo.md`.
+
+## ConsignadoJ1LatencyBurn
+
+Aceites 202 acima de 100 ms alem do budget de 5%. Conferir banco, aquecimento, recursos e
+traces. Nao aumentar timeouts sem diagnostico.
+
+## ConsignadoJ2DeadlineBurn
+
+Propostas vencendo sem decisao correta. A classificacao acontece no vencimento, entao a
+causa comecou ate um prazo antes (2 min fast, 45 min standard). Conferir LegacyUnavailable,
+filas, DLQ e capacidade de 180 TPS antes de reiniciar consumidores.
+
+## ConsignadoDlqNotEmpty
+
+Mensagem esgotou 3 recebimentos sem sucesso. Proposta sem decisao automatica: identificar a
+causa pelo trace e logs antes de qualquer redrive; nunca reprocessar em massa sem conferir
+idempotencia no legado.
+
+## ConsignadoSloEvaluatorStale
+
+O avaliador de prazos nao completa ciclos: J2 deixa de ser medido e o budget pareceria
+intacto. Conferir acesso ao DynamoDB (indice `sloOpen-createdAt`) e logs
+`event=slo_deadline_evaluation_failed`.
 
 ## Evolucao
 
-Definir SLOs, entao alertar por consumo de orcamento de erro em janelas curta/longa.
-Instrumentar idade da mensagem mais antiga, DLQ e frescor do amostrador antes de prometer
-alertas sobre esses sinais. CPU e heap sao diagnostico, nao pagina isolada nesta entrega.
+Idade da mensagem mais antiga segue sem sinal (a API SQS nao expoe); usar profundidade e
+tempo de drenagem como proxy. CPU e heap sao diagnostico, nao pagina isolada nesta entrega.
 
 Referencias: [Google SRE](https://sre.google/workbook/alerting-on-slos/) e
 [Alertmanager](https://prometheus.io/docs/alerting/latest/configuration/).

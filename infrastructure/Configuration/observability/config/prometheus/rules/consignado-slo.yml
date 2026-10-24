@@ -1,0 +1,131 @@
+# SLIs e error budget do SLO v1 (docs/sre/slo.md). Apenas recording rules: os alertas por
+# burn rate (S3) consomem estas series. Janelas 5m/30m/1h/6h para burn rate e 30d para o budget.
+#
+# Convencoes:
+# - slo:<sli>_errors:ratio_rate<janela> = fracao de eventos ruins entre os elegiveis (0..1).
+# - Denominador filtrado por > 0: sem trafego elegivel nao ha amostra (sem dado, nao sucesso).
+# - Labels apenas categoricas (lane); nenhum identificador.
+#
+# Limites conhecidos:
+# - J1 e observado no servidor: timeout/conexao recusada antes da API nao aparecem aqui.
+# - 429 e excluido por inteiro; a metrica HTTP nao separa cota excedida pelo cliente de
+#   recusa indevida a cliente dentro da cota (lacuna registrada no SLO).
+
+groups:
+  - name: consignado.slo.j1
+    interval: 30s
+    rules:
+      # --- J1 disponibilidade: 5xx entre elegiveis (exclui 400/401/403/422/429) ---
+      - record: slo:j1_availability_errors:ratio_rate5m
+        expr: |
+          (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status=~"5.."}[5m])) or vector(0))
+          /
+          (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status!~"400|401|403|422|429"}[5m])) > 0)
+      - record: slo:j1_availability_errors:ratio_rate30m
+        expr: |
+          (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status=~"5.."}[30m])) or vector(0))
+          /
+          (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status!~"400|401|403|422|429"}[30m])) > 0)
+      - record: slo:j1_availability_errors:ratio_rate1h
+        expr: |
+          (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status=~"5.."}[1h])) or vector(0))
+          /
+          (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status!~"400|401|403|422|429"}[1h])) > 0)
+      - record: slo:j1_availability_errors:ratio_rate6h
+        expr: |
+          (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status=~"5.."}[6h])) or vector(0))
+          /
+          (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status!~"400|401|403|422|429"}[6h])) > 0)
+      - record: slo:j1_availability_errors:ratio_rate30d
+        expr: |
+          (sum(increase(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status=~"5.."}[30d])) or vector(0))
+          /
+          (sum(increase(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status!~"400|401|403|422|429"}[30d])) > 0)
+
+      # --- J1 latencia: aceites 202 acima de 100 ms (meta 95% <= 100 ms) ---
+      - record: slo:j1_latency_100ms_errors:ratio_rate5m
+        expr: |
+          1 - (
+            sum(rate(http_server_requests_seconds_bucket{service="ingestion-api",method="POST",uri="/v1/proposals",status="202",le="0.1"}[5m]))
+            /
+            (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}[5m])) > 0)
+          )
+      - record: slo:j1_latency_100ms_errors:ratio_rate1h
+        expr: |
+          1 - (
+            sum(rate(http_server_requests_seconds_bucket{service="ingestion-api",method="POST",uri="/v1/proposals",status="202",le="0.1"}[1h]))
+            /
+            (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}[1h])) > 0)
+          )
+      - record: slo:j1_latency_100ms_errors:ratio_rate30m
+        expr: |
+          1 - (
+            sum(rate(http_server_requests_seconds_bucket{service="ingestion-api",method="POST",uri="/v1/proposals",status="202",le="0.1"}[30m]))
+            /
+            (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}[30m])) > 0)
+          )
+      - record: slo:j1_latency_100ms_errors:ratio_rate6h
+        expr: |
+          1 - (
+            sum(rate(http_server_requests_seconds_bucket{service="ingestion-api",method="POST",uri="/v1/proposals",status="202",le="0.1"}[6h]))
+            /
+            (sum(rate(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}[6h])) > 0)
+          )
+      - record: slo:j1_latency_100ms_errors:ratio_rate30d
+        expr: |
+          1 - (
+            sum(increase(http_server_requests_seconds_bucket{service="ingestion-api",method="POST",uri="/v1/proposals",status="202",le="0.1"}[30d]))
+            /
+            (sum(increase(http_server_requests_seconds_count{service="ingestion-api",method="POST",uri="/v1/proposals",status="202"}[30d])) > 0)
+          )
+
+      # --- Budget restante em 30 dias (1 = intacto, 0 = esgotado, negativo = estourado) ---
+      - record: slo:j1_availability_budget_remaining:ratio30d
+        expr: 1 - slo:j1_availability_errors:ratio_rate30d / (1 - 0.995)
+      - record: slo:j1_latency_100ms_budget_remaining:ratio30d
+        expr: 1 - slo:j1_latency_100ms_errors:ratio_rate30d / (1 - 0.95)
+
+  - name: consignado.slo.j2
+    interval: 30s
+    rules:
+      # --- J2 decisao no prazo, por lane (slo_j2_events_total do DeadlineEvaluator) ---
+      - record: slo:j2_deadline_errors:ratio_rate5m
+        expr: |
+          sum by (lane) (rate(slo_j2_events_total{outcome="bad"}[5m]))
+          /
+          (sum by (lane) (rate(slo_j2_events_total[5m])) > 0)
+      - record: slo:j2_deadline_errors:ratio_rate30m
+        expr: |
+          sum by (lane) (rate(slo_j2_events_total{outcome="bad"}[30m]))
+          /
+          (sum by (lane) (rate(slo_j2_events_total[30m])) > 0)
+      - record: slo:j2_deadline_errors:ratio_rate1h
+        expr: |
+          sum by (lane) (rate(slo_j2_events_total{outcome="bad"}[1h]))
+          /
+          (sum by (lane) (rate(slo_j2_events_total[1h])) > 0)
+      - record: slo:j2_deadline_errors:ratio_rate6h
+        expr: |
+          sum by (lane) (rate(slo_j2_events_total{outcome="bad"}[6h]))
+          /
+          (sum by (lane) (rate(slo_j2_events_total[6h])) > 0)
+      - record: slo:j2_deadline_errors:ratio_rate30d
+        expr: |
+          sum by (lane) (increase(slo_j2_events_total{outcome="bad"}[30d]))
+          /
+          (sum by (lane) (increase(slo_j2_events_total[30d])) > 0)
+
+      # Meta por lane como serie, para budget e burn rate sem duplicar regras.
+      - record: slo:j2_deadline:objective
+        expr: vector(0.95)
+        labels:
+          lane: fast
+      - record: slo:j2_deadline:objective
+        expr: vector(0.90)
+        labels:
+          lane: standard
+
+      - record: slo:j2_deadline_budget_remaining:ratio30d
+        expr: |
+          1 - slo:j2_deadline_errors:ratio_rate30d
+            / on (lane) (1 - slo:j2_deadline:objective)

@@ -1,149 +1,58 @@
 # Alertas da PoC de consignado
 
-Revisão: 18/10/2026. Este guia explica os alertas versionados, como as notificações chegam ao destino e quais evidências já existem. O ambiente está desligado após a pausa dos testes; este documento não representa uma consulta ao estado atual da stack.
+Revisão: 23/10/2026. As condições exatas, comandos e runbooks ficam no [manual técnico](../../../infrastructure/Configuration/observability/ALERTAS.md). Este guia resume o fluxo e as evidências.
 
-O objetivo é detectar perda de observabilidade, falhas na entrada e interrupções no processamento de propostas, oferecendo contexto para investigação. Os limites são iniciais da PoC: não constituem SLA nem alertas por consumo de orçamento de erro.
+## Rotas de notificação
 
-## Como funciona
-
-```mermaid
-flowchart LR
-    A[Aplicações] --> PG[Pushgateway]
-    PG --> P[Prometheus: avalia regras]
-    T[Alvos da stack] --> P
-    P --> AM[Alertmanager: agrupa e roteia]
-    AM --> SNS[SNS: alert-consignado]
-    SNS --> Q[SQS: alert-consignado-sqs]
-    Q --> C[Consumidor e atendimento: pendentes de definição]
-```
-
-O Prometheus identifica a condição. O Alertmanager controla agrupamento, repetições, inibições e silêncios, publicando no SNS pelo receiver nativo. O SNS encaminha à fila por assinatura. Não há Lambda nessa rota de alertas SRE.
-
-- **SNS:** `arn:aws:sns:sa-east-1:247755251743:alert-consignado`.
-- **SQS:** `arn:aws:sqs:sa-east-1:247755251743:alert-consignado-sqs`.
-- **Autenticação SNS:** credenciais temporárias do Instance Profile da EC2, com permissão `sns:Publish` no tópico.
-
-Os sete alertas usam `notification=sre`. Eles não acionam o orquestrador de self-healing, cuja rota é separada. A rota padrão `blackhole` descarta notificações que não correspondem às rotas configuradas. Receber uma mensagem na fila ainda exige um consumidor, um responsável e um procedimento de resposta.
-
-## Quais alertas temos
-
-As condições abaixo resumem a [fonte das sete regras](../../../infrastructure/Configuration/observability/config/prometheus/rules/consignado-sre.yml). A coluna de persistência corresponde ao `for`: a expressão precisa continuar verdadeira durante esse período.
-
-| Alerta | O que significa / condição | Persistência | Severidade | Primeira ação |
-|---|---|---|---|---|
-| `ConsignadoScrapeDown` | Um alvo monitorado da stack apresenta `up=0`. | 2 min | critical | Consultar `/targets`, erro de coleta, rede e logs do alvo. |
-| `ConsignadoPushMissing` | Último push acima de 120 s ou ausência de um dos jobs esperados: API, worker e mock legado; exige Pushgateway acessível. | 1 min | critical | Conferir processo Java, exportador e conexão com o Pushgateway. |
-| `ConsignadoIngestionErrors` | Mais de 5% de 5xx em 5 min, com pelo menos 100 POSTs nessa janela. | 5 min | critical | Investigar DynamoDB/Inbox, timeouts e traces de aceite. |
-| `ConsignadoIngestionLatency` | p95 acima de 500 ms em 5 min, com pelo menos 100 POSTs nessa janela. | 10 min | warning | Investigar banco, aquecimento e saturação da máquina. |
-| `ConsignadoWorkerStalled` | Há fila pendente e a taxa amostrada de processamento é zero. | 5 min | critical | Conferir consumidores, acesso às filas, legado e circuito. |
-| `ConsignadoBacklogDelayed` | Drenagem estimada acima de 300 s, com fila pendente. | 10 min | warning | Comparar chegada, saída e capacidade disponível. |
-| `ConsignadoLegacyUnavailable` | Circuit breaker aberto (`2`), com fila pendente. | 2 min | critical | Investigar falha, latência e capacidade do legado. |
-
-Os alertas HTTP consideram `POST /v1/proposals` da `ingestion-api`. A regra de erros usa somente 5xx; 4xx, inclusive 429, ficam fora do numerador nesta versão. Isso não define sua elegibilidade em um futuro SLI.
-
-API e processamento exigem push recente, com idade menor que 120 s. Com métricas antigas, a ausência de alertas de processamento não comprova saúde: verificar `ConsignadoPushMissing`. A profundidade, taxa e drenagem do worker são amostras aproximadas. Drenagem é uma estimativa sem novas chegadas, não a idade da mensagem nem o prazo individual da proposta.
-
-Cada alerta aponta para um [runbook detalhado](../../../infrastructure/Configuration/observability/ALERTAS.md), com diagnóstico por nome da regra.
-
-## Quando a notificação chega
-
-O ciclo observado é: condição verdadeira → `pending` → persistência atendida → `firing` → agrupamento e publicação. Quando a condição deixa de ser verdadeira, o alerta deixa de estar ativo; o receiver envia também a recuperação (`send_resolved=true`).
-
-| Configuração | Valor atual | Efeito |
+| Ambiente | Caminho | O que foi comprovado |
 |---|---|---|
-| Coleta e avaliação do Prometheus | 15 s cada | Acrescentam tempo até observar e avaliar a condição. |
-| `group_by` | `alertname`, `env`, `service`, `job` | Agrupa notificações com os mesmos valores; pode reunir instâncias diferentes. |
-| `group_wait` | 30 s | Espera inicial de um grupo novo. |
-| `group_interval` | 5 min | Intervalo para atualizações do grupo, incluindo recuperação. |
-| `repeat_interval`, critical | 1 h | Repetição enquanto o alerta permanece ativo. |
-| `repeat_interval`, demais alertas SRE | 4 h | Repetição herdada, incluindo warning. |
+| Local, incremento S4 | Alertmanager → webhook em `127.0.0.1:9096/alerts` → ElasticMQ `sqs-alerts` → consumidor → JSONL | Game day sintético com abertura, resolução e deduplicação do episódio |
+| AWS, primeiro ciclo | Alertmanager → SNS → SQS | Publicação até SNS nos exercícios de 17/10; entrega SQS registrada em ensaio anterior |
 
-Exemplo: um push envelhecido precisa ultrapassar 120 s e permanecer nessa condição por mais 1 min. A detecção ocorre aproximadamente após 3 min desde o último push, acrescidos dos intervalos de coleta/avaliação; um grupo novo ainda espera 30 s para notificar. Ausência total de job tem outro ponto de início, pois não há último push a envelhecer. Esses tempos não são garantia de entrega.
+A configuração local é [alertmanager.local.yml](../../../infrastructure/Configuration/observability/config/alertmanager/alertmanager.local.yml). A rota AWS permanece em [alertmanager.yml](../../../infrastructure/Configuration/observability/config/alertmanager/alertmanager.yml). Não há Lambda na rota SNS → SQS. O consumidor local não foi conectado à fila AWS.
 
-As inibições reduzem notificações redundantes para o mesmo ambiente, serviço e instância:
+O consumidor local grava `.local/incidents/incidents.jsonl`, relativo ao diretório de execução, ou o caminho de `LOCAL_ENV_INCIDENTS_FILE`. Isso demonstra processamento do episódio, sem comprovar atendimento humano ou envio de e-mail.
 
-- Erros de ingestão inibem o aviso de latência.
-- Legado indisponível inibe worker parado e drenagem elevada.
-- Worker parado inibe drenagem elevada.
+## Alertas versionados
 
-Inibição e silêncio afetam notificações, não a condição avaliada nem o resultado do serviço. Em manutenção, usar silêncio restrito e com expiração. Não apagar métricas ou filas para encerrar um alerta.
-
-## O que chega na mensagem
-
-O [template SNS](../../../infrastructure/Configuration/observability/config/alertmanager/templates/consignado-sns.tmpl) produz JSON com `schemaVersion`, status do grupo e uma lista de alertas. Cada item contém status, labels, annotations, horários e fingerprint.
-
-As annotations incluem resumo, descrição, runbook e `dashboard_path`. Alertas de API e worker também informam serviço e operação para busca no Jaeger. Resolver os caminhos relativos com o endereço atual do ambiente; o IP público pode mudar ao iniciar a EC2.
-
-Um grupo pode conter itens disparados e resolvidos: o consumidor deve interpretar o status de cada alerta. Correlacionar fingerprint, status e início do episódio, tolerando entregas repetidas. A fingerprint de alerta não é o Business Fingerprint de uma proposta.
-
-Com `RawMessageDelivery=false`, o corpo SQS contém o envelope SNS e o JSON do Alertmanager fica no campo `Message`. Com `true`, chega diretamente no corpo. Conferir a configuração efetiva da assinatura antes de implementar o consumidor.
-
-## Como investigar e comprovar recuperação
-
-1. Identificar alerta, ambiente, serviço, instância e início do episódio no Prometheus/Alertmanager.
-2. Abrir o runbook e o dashboard indicado; conferir o frescor da telemetria.
-3. Correlacionar logs e traces no período. Preservar identidade e idempotência nas retentativas.
-4. Restaurar o componente e verificar as propostas afetadas: decisões, pendências, filas e DLQ. Fila vazia isoladamente não comprova sucesso de negócio.
-5. Conferir resolução da regra e publicação de recuperação. Validar recepção no destino separadamente.
-6. Registrar horários observados, ações, resultados e limitações. Responsável, reconhecimento humano e escalonamento ainda precisam ser definidos.
-
-O aceite HTTP 202 não comprova confirmação no legado. Um replay idempotente pode recuperar um resultado existente sem representar novo efeito de negócio.
-
-## Como validar
-
-### Arquivos e regras, sem envio
-
-No diretório `infrastructure/Configuration/observability`, com as ferramentas disponíveis:
-
-```sh
-promtool check config config/prometheus/prometheus.yml
-promtool check rules config/prometheus/rules/consignado-sre.yml
-promtool test rules config/prometheus/tests/consignado-sre.test.yml
-amtool check-config config/alertmanager/alertmanager.yml
-```
-
-O arquivo do Alertmanager referencia templates em `/etc/alertmanager/templates/`; executar sua validação no contexto com esse caminho montado. Os testes das regras não param aplicações nem publicam notificações. O manual técnico descreve também o teste do template JSON e das rotas.
-
-### Canal de notificação
-
-A partir da raiz, preparar um payload sem enviar:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File applications/scripts/test-alert-notification.ps1 `
-  -AlertmanagerUrl 'http://<IP_ATUAL>:9093' `
-  -OutputDirectory applications/.local/alert-test-preparado-001 -PrepareOnly
-```
-
-O diretório deve ser novo. Para um teste de envio autorizado com o ambiente disponível, executar sem `-PrepareOnly`, usando outro diretório novo. O alerta sintético `ConsignadoNotificationTest` expira em 180 s por padrão e não comprova detecção de falha real.
-
-Separar as evidências: HTTP 200 comprova entrada no Alertmanager; contadores/logs da integração ajudam a comprovar publicação SNS; recepção SQS e atendimento do incidente exigem verificações próprias. Preservar a situação inicial e correlacionar o episódio para não atribuir envios concorrentes ao teste.
-
-### Evidências existentes
-
-| Escopo | Evidência registrada | Limite |
+| Família | Sinal | Primeira investigação |
 |---|---|---|
-| Sete regras | 14 cenários / 98 verificações offline aprovados, registrados em 17/10/2026. | Não comprova disparo integrado de todas as regras. |
-| Configuração e canal | Regras ativas saudáveis, rotas, template JSON e ciclo sintético firing/resolved até SNS verificados em 17/10. | A fila não foi inspecionada nessa rodada. |
-| Falha real do worker | Pausa controlada gerou `ConsignadoPushMissing`; retomada recuperou dez propostas e foram observados disparo e resolução até SNS. | Pausa preservou o processo; não demonstra recuperação após crash. |
-| SNS → SQS | O manual registra validação anterior de entrega na fila. | Não equivale a nova validação nos exercícios de 17/10, nem a reconhecimento humano. |
+| `ConsignadoScrapeDown`, `ConsignadoPushMissing` | Coleta indisponível ou push ausente/antigo | Processo, `/targets`, rede e exportador |
+| `ConsignadoJ1AvailabilityBurnFast/Slow` | Consumo do orçamento de disponibilidade do aceite | Timeouts, escrita na Inbox e erros 5xx |
+| `ConsignadoJ1LatencyBurnFast/Slow` | Consumo do orçamento de aceites acima de 100 ms | Banco, aquecimento e saturação |
+| `ConsignadoJ2DeadlineBurnFast/Slow` | Decisões fora do prazo | Inbox, filas, worker e legado |
+| `ConsignadoWorkerStalled`, `ConsignadoBacklogDelayed` | Fila sem saída ou drenagem elevada | Consumo, entrada e orçamento de vazão |
+| `ConsignadoLegacyUnavailable` | Circuito fora de CLOSED, com OPEN recente e fila pendente | Falhas e latência do legado |
+| `ConsignadoDlqNotEmpty` | Mensagens na DLQ | Motivo de falha antes de qualquer reenvio |
+| `ConsignadoSloEvaluatorStale` | Avaliador J2 sem ciclo recente, com push ativo do worker | DynamoDB e logs do avaliador |
 
-Consultar o [relato da falha real do worker](../exercicio-falha-worker.md) e o [manual técnico](../../../infrastructure/Configuration/observability/ALERTAS.md) para datas, artefatos e limites. Os exercícios L1/L2 de falha curta não comprovam disparo de alerta: suas durações podem ser inferiores ao `for` das regras.
+As regras estáticas antigas de erro e latência foram substituídas na S3. Na lane standard, a queima rápida de 14,4 vezes o orçamento de 10% é inalcançável; a regra lenta e os sinais de causa continuam relevantes.
 
-## Lacunas e próximos incrementos
+As regras estão em [consignado-sre.yml](../../../infrastructure/Configuration/observability/config/prometheus/rules/consignado-sre.yml) e [consignado-slo-alerts.yml](../../../infrastructure/Configuration/observability/config/prometheus/rules/consignado-slo-alerts.yml). A definição de população e metas está nos [SLOs](../slo.md).
 
-- Definir consumidor da fila, responsável, reconhecimento e escalonamento.
-- Validar detecção com pouco tráfego: o piso de 100 chamadas pode ocultar falhas de baixa demanda.
-- Testar continuidade do alerta de legado: transições OPEN/HALF_OPEN podem reiniciar os 2 min exigidos, mesmo com dependência instável.
-- Instrumentar idade da mensagem, DLQ e frescor do amostrador antes de criar alertas sobre esses sinais.
-- Prever observador externo para queda da EC2 ou do próprio Prometheus; a stack não avisa sua própria perda total.
-- Evoluir para alertas por consumo de orçamento de erro quando houver medição contínua, cobertura e SLOs validados. Relatórios de experimentos não substituem essa medição.
+## Limites de cobertura
 
-## Fontes e manutenção
+- Regras dependentes de `push_time_seconds` não oferecem a mesma cobertura com scrape direto. Isso inclui o alerta de frescor do avaliador; o ensaio local não resolve essa lacuna.
+- O J2 não cobre itens nunca roteados ou anteriores ao índice `sloOpen`. Ausência de alerta não comprova cobertura completa.
+- Profundidade e drenagem são amostras; fila vazia não comprova decisão correta de todas as propostas.
+- Entrega na fila e registro JSONL não equivalem a reconhecimento humano. Responsável e escalonamento operacional continuam sem validação.
+- A stack não detecta sozinha sua perda total; monitor externo permanece fora da entrega atual.
 
-- [Índice SRE](../README.md): métricas, SLIs/SLOs, dashboards e exercícios.
-- [Manual e runbooks](../../../infrastructure/Configuration/observability/ALERTAS.md): procedimentos técnicos canônicos.
-- [Regras Prometheus](../../../infrastructure/Configuration/observability/config/prometheus/rules/consignado-sre.yml) e [testes](../../../infrastructure/Configuration/observability/config/prometheus/tests/consignado-sre.test.yml).
-- [Prometheus](../../../infrastructure/Configuration/observability/config/prometheus/prometheus.yml) e [Alertmanager](../../../infrastructure/Configuration/observability/config/alertmanager/alertmanager.yml): intervalos, receivers e inibições.
-- [Roteiro de apresentação](../apresentacao/README.md): demonstração de detecção e recuperação.
+## Investigação e validação
 
-Ao alterar regras ou rotas, atualizar este resumo e o manual, validar a camada alterada e registrar separadamente a sincronização e a comprovação remota.
+1. Identificar alerta, ambiente, serviço, instância e início do episódio.
+2. Conferir o frescor dos dados e abrir o runbook correspondente.
+3. Correlacionar logs e traces; verificar decisões, pendências e DLQ da mesma coorte.
+4. Restaurar o componente e comprovar recuperação do negócio e resolução do alerta separadamente.
+5. Registrar impacto, ações e limites no [modelo de postmortem](../postmortem-template.md).
+
+Silêncios e inibições afetam notificações, não os resultados medidos. Preservar falhas e resultados incompletos.
+
+Validar os arquivos com promtool/amtool conforme o [manual técnico](../../../infrastructure/Configuration/observability/ALERTAS.md). Teste offline de regra não comprova entrega de notificação. Para testes de canal, usar um episódio sintético com expiração e distinguir entrada no Alertmanager, publicação, recepção e atendimento.
+
+## Evidências
+
+- [Validação S3](../../../aidlc-docs/construction/sre-s3/validation.md): regras de burn rate e testes offline.
+- [Validação S4](../../../aidlc-docs/construction/sre-s4/validation.md) e [postmortem](../postmortem-gameday-s4-20261023.md): ciclo sintético local com deduplicação.
+- [Falha real do worker, 17/10](../exercicio-falha-worker.md): pausa preservando o processo, recuperação de dez propostas e notificações até SNS.
+- [Validação S0](../../../aidlc-docs/construction/sre-s0/validation.md): correção do detector OPEN/HALF_OPEN. Os relatos antigos preservam a lacuna observada antes da correção.

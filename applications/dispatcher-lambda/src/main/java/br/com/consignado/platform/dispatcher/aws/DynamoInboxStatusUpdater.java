@@ -12,7 +12,8 @@ import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 /**
  * RECEIVED para DISPATCHED de forma condicional: reprocessar o mesmo registro do Stream nao regride
- * nem sobrescreve o estado de itens ja despachados.
+ * nem sobrescreve o estado de itens ja despachados. Com lane, marca o item como aberto para a
+ * medicao do SLO J2 ({@code sloOpen}).
  */
 public final class DynamoInboxStatusUpdater implements InboxStatusUpdater {
 
@@ -34,7 +35,13 @@ public final class DynamoInboxStatusUpdater implements InboxStatusUpdater {
       IdempotencyKey key, int priorityScore, br.com.consignado.platform.shared.contract.Lane lane) {
     Map<String, String> names =
         new java.util.HashMap<>(
-            Map.of("#status", InboxAttributes.STATUS, "#score", InboxAttributes.PRIORITY_SCORE));
+            Map.of(
+                "#status",
+                InboxAttributes.STATUS,
+                "#score",
+                InboxAttributes.PRIORITY_SCORE,
+                "#pending",
+                InboxAttributes.DISPATCH_PENDING));
     Map<String, AttributeValue> values =
         new java.util.HashMap<>(
             Map.of(
@@ -45,6 +52,7 @@ public final class DynamoInboxStatusUpdater implements InboxStatusUpdater {
     if (lane != null) {
       names.put("#lane", InboxAttributes.LANE);
       names.put("#routedAt", InboxAttributes.ROUTED_AT);
+      names.put("#sloOpen", InboxAttributes.SLO_OPEN);
       values.put(
           ":routedAt",
           AttributeValue.builder().n(Long.toString(System.currentTimeMillis())).build());
@@ -61,7 +69,10 @@ public final class DynamoInboxStatusUpdater implements InboxStatusUpdater {
                     AttributeValue.builder().s(key.toString()).build()))
             .updateExpression(
                 "SET #status = :dispatched, #score = :score"
-                    + (lane == null ? "" : ", #lane = :lane, #routedAt = :routedAt"))
+                    + (lane == null
+                        ? ""
+                        : ", #lane = :lane, #routedAt = :routedAt, #sloOpen = :lane")
+                    + " REMOVE #pending")
             .conditionExpression("#status = :received")
             .expressionAttributeNames(names)
             .expressionAttributeValues(values)

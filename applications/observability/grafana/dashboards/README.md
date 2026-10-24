@@ -1,5 +1,7 @@
 # Dashboards Grafana
 
+Atualização de 23/10/2026: sete dashboards versionados, incluindo `slo-error-budget.json` (UID `consignado-slo-budget`) para J1/J2. As referências abaixo aos seis painéis publicados descrevem a EC2 em 17/10. O novo painel não foi homologado no Grafana com dados reais; regras foram testadas e a S6 coletou métricas no Prometheus local. Ver [estado atual](../../../../docs/estado-atual.md).
+
 Visao consolidada de confiabilidade: [README SRE](../../../../docs/sre/README.md).
 Evolucao planejada: [plano de implementacao](../../../../docs/sre/plano-implementacao.md).
 
@@ -12,6 +14,7 @@ Paineis sobre as metricas Micrometer dos servicos Java:
 | `backlog-drain.json` | Backlog e Drenagem: filas por lane, chegada x processamento, drenagem, SLO, VGV | worker |
 | `business-overview.json` | Negocio: propostas novas, confirmadas/rejeitadas, valores e ticket medio no periodo | ingestion-api, worker |
 | `sre-overview.json` | SRE - Operacao: HTTP, frescor, filas, finalizados, circuito, concorrencia e legado | ingestion-api, worker, mock-legacy |
+| `slo-error-budget.json` | SLO e Error Budget: budget restante 30d (J1 disponibilidade/latencia, J2 por lane), queima por janela, DLQ | recording rules `consignado-slo.yml`, worker |
 | `sre-experiments.json` | SRE - Experimentos: SLIs A/B/C, metas, cobertura, orcamento e pendencias do ultimo relatorio | job `sre-experiment` |
 
 Fonte de dados: Prometheus com `uid: prometheus`. Os filtros usam a tag `service` (comum a todas as
@@ -124,3 +127,9 @@ mutuamente exclusivas; a consulta B usa override laranja por `byFrameRefID`.
 A cor nao mede so backlog nem atesta saude: rejeicoes e propostas recebidas/finalizadas em
 periodos distintos tambem alteram a comparacao. Se faltar uma das series ou o denominador do
 ticket for zero, o painel mostra sem dados. `increase` continua sendo estimativa, nao ledger.
+
+## Execução local do incremento SRE
+
+A coleta direta usa `infrastructure/Configuration/observability/config/prometheus/prometheus.local.yml`, com os endpoints `/actuator/prometheus` de ingestion-api, mock-legacy e worker. Iniciar `local-up.ps1 -PushgatewayAddress '' -OtlpTracesEndpoint ''` para manter o ensaio local. O dashboard de SLO usa as mesmas recording rules, sem exigir Pushgateway.
+
+Ensaios reproduzíveis: `node applications/scripts/capacity-local.cjs 15`. O teste `durability-local.cjs` exige a mesma sessão de PowerShell que iniciou `local-up.ps1`, para o worker reiniciado herdar as chaves transitórias; ele não grava essas chaves em arquivo.

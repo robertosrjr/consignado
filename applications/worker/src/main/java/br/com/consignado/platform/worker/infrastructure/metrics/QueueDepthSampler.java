@@ -20,6 +20,7 @@ public final class QueueDepthSampler implements SmartLifecycle {
   private final long periodSeconds;
   private final AtomicLong fastDepth = new AtomicLong();
   private final AtomicLong standardDepth = new AtomicLong();
+  private final AtomicLong dlqDepth = new AtomicLong(-1);
   private ScheduledExecutorService scheduler;
   private volatile boolean running;
 
@@ -40,6 +41,10 @@ public final class QueueDepthSampler implements SmartLifecycle {
           .tag("lane", lane.name().toLowerCase(Locale.ROOT))
           .register(registry);
     }
+    // NaN enquanto nao houver amostra valida: ausencia de dado nao vira DLQ vazia
+    Gauge.builder("worker.dlq.depth", dlqDepth, d -> d.get() < 0 ? Double.NaN : d.get())
+        .description("Profundidade aproximada da DLQ das lanes")
+        .register(registry);
   }
 
   /** Uma amostragem (publica para testes). */
@@ -48,6 +53,7 @@ public final class QueueDepthSampler implements SmartLifecycle {
     long standard = depths.approximateDepth(Lane.STANDARD);
     fastDepth.set(fast);
     standardDepth.set(standard);
+    dlqDepth.set(depths.dlqDepth());
     estimator.sample(fast + standard, metrics.completedTotal(), nanoTime);
   }
 

@@ -1,5 +1,7 @@
 # A Narrativa de Negócios: "O Paradoxo da Virada de Folha"
 
+**Pitch histórico:** cenários, números de mercado e alegações regulatórias abaixo não são resultados da PoC e precisam de fontes antes de publicação. Para apresentar o projeto atual, use o [contexto e objetivos](contexto-e-objetivos.md) e o [estado atual](../estado-atual.md).
+
 **Status:** Roteiro Executivo de Apresentação (Pitch C-Level)  
 **Objetivo:** Defender o investimento na arquitetura de resiliência e ingestão massiva para Crédito Consignado  
 **Público-Alvo:** VPs, Diretores de TI, Diretores de Operações e C-Level de Instituições Financeiras  

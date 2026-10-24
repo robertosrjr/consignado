@@ -1,8 +1,10 @@
 # DDA: plano de implementação da evolução SRE
 
+**Plano histórico do primeiro ciclo (17–18/10).** Os itens e próximos passos abaixo descrevem aquele momento. O plano ativo é [S0–S7](../../aidlc-docs/inception/sre-evolucao/workflow-plan.md): S0–S5 validadas; S6 com homologação pendente. Persistência do worker, avaliador e burn rate já receberam entregas nesse incremento.
+
 **Revisão:** 17/10/2026. **Estado:** contrato, avaliador e captura local opt-in das fontes implementados; persistência e operação contínua pendentes. Seis dashboards sincronizados na EC2, com datasource e 108 expressões validados. Um relatório de experimento real foi publicado explicitamente; isso não representa projeção contínua.
 
-O objetivo é demonstrar aceite correto e decisão no prazo com denominadores verificáveis, inclusive quando há falhas e propostas pendentes. O plano parte dos serviços existentes, do [README SRE](README.md) e da [análise crítica](../brainstorming/SRE/rascunho-plano-evolucao-sre-sli-slo-sla.md), preservando o contrato HTTP e a proteção do legado durante a evolução.
+O objetivo é demonstrar aceite correto e decisão no prazo com denominadores verificáveis, inclusive quando há falhas e propostas pendentes. O plano parte dos serviços existentes, do [README SRE](README.md) e da [análise crítica](../brainstorming/Fase-01/SRE/rascunho-plano-evolucao-sre-sli-slo-sla.md), preservando o contrato HTTP e a proteção do legado durante a evolução.
 
 ## 1. Visão geral e objetivos de negócio
 

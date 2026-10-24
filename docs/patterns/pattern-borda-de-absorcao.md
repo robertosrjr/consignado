@@ -4,7 +4,7 @@
 >
 > **Status: pattern candidato.** A solução tem uma implementação de referência (este repositório) e usos conhecidos que sustentam partes dela (seção "Usos conhecidos"). Pela regra de três da comunidade de patterns, a combinação completa ainda precisa de três usos independentes documentados para deixar de ser candidata.
 >
-> **Versão 2 (09/10/2026).** Revisão adversarial registrada em [melhoria-proposta.md](../brainstorming/melhoria-proposta.md), seção 0.
+> **Versão 2 (09/10/2026).** Revisão adversarial registrada em [melhoria-proposta.md](../brainstorming/Fase-01/melhoria-proposta.md), seção 0.
 
 Este documento descreve a arquitetura desta PoC como um pattern reutilizável, independente do crédito consignado. Foi escrito para arquitetos e times que enfrentam picos de demanda contra sistemas de capacidade fixa.
 
@@ -232,7 +232,7 @@ Todos os casos abaixo têm pico com hora marcada e destino com capacidade fixa:
 | Espera anunciada e resultado pelo log | `Retry-After`, status com cota, notificação via Streams | proposto (M9) |
 | Sistema de destino | [mock-legacy](../../applications/mock-legacy/README.md), 180 TPS | implementado; falta o modo adversarial (M2) |
 
-Os itens M1–M9 estão descritos em [melhoria-proposta.md](../brainstorming/melhoria-proposta.md).
+Os itens M1–M9 estão descritos em [melhoria-proposta.md](../brainstorming/Fase-01/melhoria-proposta.md).
 
 Números da PoC: 10.000 req/s na borda, p95 do `202` abaixo de 100 ms, 180 TPS no destino e QoS 70/30. São **metas** até a publicação das evidências de carga.
 

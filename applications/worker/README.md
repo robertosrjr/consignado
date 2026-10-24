@@ -38,7 +38,7 @@ stateDiagram-v2
 
 `CONFIRMED` e `FAILED` são absorventes: uma proposta em estado final **nunca** volta a chamar o legado. Se a mensagem for reentregue, o Worker vê o estado final e apenas confirma a mensagem. Como a chamada ao legado usa a mesma `Idempotency-Key`, mesmo um reenvio devolve o resultado original em vez de averbar de novo.
 
-Estado e eventos são atualizados no repositório em memória. Isso não constitui uma outbox durável: os dados se perdem ao reiniciar e não há exclusão mútua entre réplicas. Consulte a [auditoria de idempotência](../../docs/auditoria-idempotencia.md).
+O repositório tem dois modos: `memory` (padrão isolado) e `dynamodb`, selecionado por `WORKER_PROPOSALS_TYPE`. O script local usa DynamoDB e persiste estado e histórico com transações e condições de versão. A decisão na Inbox é reparada antes do ACK, inclusive em replay terminal. O histórico não inclui um publicador externo de eventos; métricas de negócio não têm entrega exatamente uma vez. [Validação e limites da S5](../../aidlc-docs/construction/sre-s5/validation.md).
 
 ## Resiliência
 
@@ -59,6 +59,10 @@ Com o circuito **aberto**, o laço de despacho para de retirar mensagens da fila
 | `WORKER_BUDGET_FAST_SHARE` | 0.70 | piso da fast lane |
 | `WORKER_MAX_IN_FLIGHT` | 360 | concorrência — **ver o alerta abaixo** |
 | `WORKER_QUEUE_TYPE` | sqs | `memory` nos testes |
+| `WORKER_PROPOSALS_TYPE` | memory | `dynamodb` no script local |
+| `WORKER_PROPOSALS_TABLE` | WorkerProposal | tabela de estado e histórico |
+| `WORKER_QUEUE_DLQ_URL` | — | habilita coleta da profundidade da DLQ |
+| `WORKER_SLO_ENABLED` | true | avaliador J2 no modo DynamoDB da Inbox |
 
 ### Atenção ao `WORKER_MAX_IN_FLIGHT`
 
@@ -106,6 +110,6 @@ Dois merecem destaque: `BudgetSimulationTest` prova que nenhuma janela de 1 s pa
 
 Para experimentos SRE locais, `scripts/local-up.ps1 -SreCapture` habilita um snapshot de estados
 via propriedade `worker.sre.capture-file`, sem endpoint público. A exportação fica desativada
-por padrão e não torna o repositório durável. Ver [captura e limites](../../docs/sre/captura-local.md).
+por padrão. Esse snapshot é evidência de experimento; a persistência depende do modo de repositório selecionado. Ver [captura e limites](../../docs/sre/captura-local.md).
 
 Hexagonal, com o orçamento e a máquina de estados no `domain` — sem Spring e sem SQS. É o que permite provar o comportamento de vazão por simulação, sem subir infraestrutura.

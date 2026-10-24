@@ -1,4 +1,6 @@
-﻿# Infraestrutura da PoC
+# Infraestrutura da PoC
+
+**Incremento atual (23/10/2026): somente local.** A EC2 não foi iniciada nos ensaios S0–S6. As instruções de nuvem abaixo documentam a configuração histórica; não são um pedido para ligar ou publicar recursos. Veja o [estado atual](../docs/estado-atual.md).
 
 Revisão: 18/10/2026. A stack de observabilidade roda em Docker Compose na EC2; as aplicações de teste podem rodar como processos Java na estação local.
 
